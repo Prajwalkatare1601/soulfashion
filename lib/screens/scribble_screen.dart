@@ -644,20 +644,52 @@ class _MannequinTemplatePainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    final bottomPath = Path()
-      ..moveTo(w * 0.39, h * 0.15)
-      ..lineTo(w * 0.61, h * 0.15) // waist top
-      ..quadraticBezierTo(w * 0.67, h * 0.22, w * 0.67, h * 0.30) // right hip
-      ..lineTo(w * 0.64, h * 0.85) // right outer leg
-      ..lineTo(w * 0.56, h * 0.85) // right cuff
-      ..lineTo(w * 0.5, h * 0.38) // right inner leg to crotch
-      ..lineTo(w * 0.44, h * 0.85) // left inner leg from crotch
-      ..lineTo(w * 0.36, h * 0.85) // left cuff
-      ..lineTo(w * 0.33, h * 0.30) // left outer leg
-      ..quadraticBezierTo(w * 0.33, h * 0.22, w * 0.39, h * 0.15) // left hip
+    // 1. Head
+    final headCenter = Offset(w * 0.5, h * 0.12);
+    final headRadius = h * 0.045;
+    canvas.drawCircle(headCenter, headRadius, paintBase);
+
+    // 2. Neck
+    final neckPath = Path()
+      ..moveTo(w * 0.48, h * 0.165)
+      ..lineTo(w * 0.48, h * 0.19)
+      ..lineTo(w * 0.52, h * 0.19)
+      ..lineTo(w * 0.52, h * 0.165)
+      ..close();
+    canvas.drawPath(neckPath, paintBase);
+
+    // 3. Combined Torso, Arms and Legs Full Path
+    final bodyPath = Path()
+      ..moveTo(w * 0.34, h * 0.20) // Left shoulder
+      ..lineTo(w * 0.66, h * 0.20) // Right shoulder
+      
+      // Right arm stub
+      ..lineTo(w * 0.72, h * 0.40)
+      ..lineTo(w * 0.67, h * 0.40)
+      ..lineTo(w * 0.63, h * 0.28) // underarm right
+      
+      // Right waist / hip curve
+      ..quadraticBezierTo(w * 0.62, h * 0.38, w * 0.65, h * 0.48) 
+      
+      // Right leg
+      ..lineTo(w * 0.62, h * 0.85)
+      ..lineTo(w * 0.55, h * 0.85) // right foot cuff
+      ..lineTo(w * 0.50, h * 0.52) // crotch split
+      
+      // Left leg
+      ..lineTo(w * 0.45, h * 0.85)
+      ..lineTo(w * 0.38, h * 0.85) // left foot cuff
+      ..lineTo(w * 0.35, h * 0.48) // left hip curve
+      
+      // Left waist
+      ..quadraticBezierTo(w * 0.38, h * 0.38, w * 0.37, h * 0.28) // underarm left
+      
+      // Left arm stub
+      ..lineTo(w * 0.33, h * 0.40)
+      ..lineTo(w * 0.28, h * 0.40)
       ..close();
 
-    canvas.drawPath(bottomPath, paintBase);
+    canvas.drawPath(bodyPath, paintBase);
   }
 
   @override
