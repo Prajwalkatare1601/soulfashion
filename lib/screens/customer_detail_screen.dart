@@ -244,6 +244,31 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
   }
 
   Future<void> _updateStatus(OrderStatus newStatus) async {
+    if (newStatus == _currentStatus) return;
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Status?'),
+        content: Text('Are you sure you want to change the status of this order to "${newStatus.label}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+            ),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm != true) return;
+
     final oldStatus = _currentStatus;
     setState(() => _currentStatus = newStatus);
     try {

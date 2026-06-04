@@ -1036,8 +1036,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final statusColor = _statusColor(customer.orderStatus);
 
     return PopupMenuButton<OrderStatus>(
-      onSelected: (newStatus) {
-        provider.updateOrderStatus(customer.id, newStatus);
+      onSelected: (newStatus) async {
+        if (newStatus == customer.orderStatus) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Update Status?'),
+            content: Text('Are you sure you want to change the status of this order to "${newStatus.label}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                ),
+                child: const Text('Update'),
+              ),
+            ],
+          ),
+        );
+        if (confirm == true) {
+          provider.updateOrderStatus(customer.id, newStatus);
+        }
       },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       color: AppTheme.surface,
