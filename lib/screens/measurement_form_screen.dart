@@ -22,6 +22,8 @@ class MeasurementFormScreen extends StatefulWidget {
 
 class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  
+  // Upper body controllers & focus nodes
   final _chestController = TextEditingController();
   final _waistController = TextEditingController();
   final _shoulderController = TextEditingController();
@@ -32,6 +34,18 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   final _shoulderFocusNode = FocusNode();
   final _sleeveFocusNode = FocusNode();
 
+  // Bottom body controllers & focus nodes
+  final _hipsController = TextEditingController();
+  final _thighController = TextEditingController();
+  final _inseamController = TextEditingController();
+  final _lengthController = TextEditingController();
+
+  final _hipsFocusNode = FocusNode();
+  final _thighFocusNode = FocusNode();
+  final _inseamFocusNode = FocusNode();
+  final _lengthFocusNode = FocusNode();
+
+  bool _isUpperBody = true;
   String? _activeField;
   final _service = SupabaseService();
   bool _isSaving = false;
@@ -44,8 +58,14 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
       _waistController.text = widget.existingMeasurement!.waist ?? '';
       _shoulderController.text = widget.existingMeasurement!.shoulder ?? '';
       _sleeveController.text = widget.existingMeasurement!.sleeve ?? '';
+      
+      _hipsController.text = widget.existingMeasurement!.hips ?? '';
+      _thighController.text = widget.existingMeasurement!.thigh ?? '';
+      _inseamController.text = widget.existingMeasurement!.inseam ?? '';
+      _lengthController.text = widget.existingMeasurement!.length ?? '';
     }
 
+    // Upper body focus listeners
     _chestFocusNode.addListener(() {
       if (_chestFocusNode.hasFocus) setState(() => _activeField = 'chest');
     });
@@ -57,6 +77,20 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     });
     _sleeveFocusNode.addListener(() {
       if (_sleeveFocusNode.hasFocus) setState(() => _activeField = 'sleeve');
+    });
+
+    // Bottom body focus listeners
+    _hipsFocusNode.addListener(() {
+      if (_hipsFocusNode.hasFocus) setState(() => _activeField = 'hips');
+    });
+    _thighFocusNode.addListener(() {
+      if (_thighFocusNode.hasFocus) setState(() => _activeField = 'thigh');
+    });
+    _inseamFocusNode.addListener(() {
+      if (_inseamFocusNode.hasFocus) setState(() => _activeField = 'inseam');
+    });
+    _lengthFocusNode.addListener(() {
+      if (_lengthFocusNode.hasFocus) setState(() => _activeField = 'length');
     });
   }
 
@@ -71,6 +105,16 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     _waistFocusNode.dispose();
     _shoulderFocusNode.dispose();
     _sleeveFocusNode.dispose();
+
+    _hipsController.dispose();
+    _thighController.dispose();
+    _inseamController.dispose();
+    _lengthController.dispose();
+
+    _hipsFocusNode.dispose();
+    _thighFocusNode.dispose();
+    _inseamFocusNode.dispose();
+    _lengthFocusNode.dispose();
     super.dispose();
   }
 
@@ -84,6 +128,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
         'waist': _waistController.text.trim(),
         'shoulder': _shoulderController.text.trim(),
         'sleeve': _sleeveController.text.trim(),
+        'hips': _hipsController.text.trim(),
+        'thigh': _thighController.text.trim(),
+        'inseam': _inseamController.text.trim(),
+        'length': _lengthController.text.trim(),
       };
       
       await _service.upsertMeasurement(widget.customerId, data);
@@ -94,7 +142,18 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e')));
+        final errorMsg = e.toString().replaceAll('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(errorMsg),
+          duration: const Duration(seconds: 8),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {
+              if (mounted) Navigator.pop(context);
+            },
+          ),
+        ));
       }
     } finally {
       if (mounted) {
@@ -107,20 +166,35 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     final x = localPosition.dx / size.width;
     final y = localPosition.dy / size.height;
 
-    // Map canvas hot zones to focus node activations
-    if (y >= 0.22 && y <= 0.36) {
-      _shoulderFocusNode.requestFocus();
-    } else if (y > 0.36 && y <= 0.52) {
-      if (x < 0.33 || x > 0.67) {
-        _sleeveFocusNode.requestFocus();
-      } else {
-        _chestFocusNode.requestFocus();
+    if (_isUpperBody) {
+      // Map canvas upper zones to focus nodes
+      if (y >= 0.22 && y <= 0.36) {
+        _shoulderFocusNode.requestFocus();
+      } else if (y > 0.36 && y <= 0.52) {
+        if (x < 0.33 || x > 0.67) {
+          _sleeveFocusNode.requestFocus();
+        } else {
+          _chestFocusNode.requestFocus();
+        }
+      } else if (y > 0.52 && y <= 0.72) {
+        if (x < 0.35 || x > 0.65) {
+          _sleeveFocusNode.requestFocus();
+        } else {
+          _waistFocusNode.requestFocus();
+        }
       }
-    } else if (y > 0.52 && y <= 0.72) {
-      if (x < 0.35 || x > 0.65) {
-        _sleeveFocusNode.requestFocus();
-      } else {
-        _waistFocusNode.requestFocus();
+    } else {
+      // Map canvas lower zones to focus nodes
+      if (y >= 0.12 && y <= 0.32) {
+        _hipsFocusNode.requestFocus();
+      } else if (y > 0.32 && y <= 0.52) {
+        _thighFocusNode.requestFocus();
+      } else if (y > 0.52 && y <= 0.88) {
+        if (x >= 0.55) {
+          _lengthFocusNode.requestFocus();
+        } else {
+          _inseamFocusNode.requestFocus();
+        }
       }
     }
   }
@@ -129,6 +203,70 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isWide = screenWidth > 700;
+
+    Widget toggleBar = Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _isUpperBody = true;
+                _activeField = null;
+              }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _isUpperBody ? AppTheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Upper Body',
+                    style: TextStyle(
+                      color: _isUpperBody ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _isUpperBody = false;
+                _activeField = null;
+              }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !_isUpperBody ? AppTheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Bottom Body',
+                    style: TextStyle(
+                      color: !_isUpperBody ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
 
     Widget silhouetteWidget = LayoutBuilder(
       builder: (context, constraints) {
@@ -147,7 +285,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
             ),
             child: CustomPaint(
               size: Size(canvasWidth, canvasHeight),
-              painter: MannequinPainter(activeField: _activeField),
+              painter: MannequinPainter(
+                activeField: _activeField, 
+                isUpperBody: _isUpperBody,
+              ),
             ),
           ),
         );
@@ -160,28 +301,50 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SectionCard(
-            title: 'Upper Body Measurements',
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildField('Chest', _chestController, _chestFocusNode)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildField('Waist', _waistController, _waistFocusNode)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildField('Shoulder', _shoulderController, _shoulderFocusNode)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildField('Sleeve', _sleeveController, _sleeveFocusNode)),
-                  ],
-                ),
-              ],
-            ),
+            title: _isUpperBody ? 'Upper Body Details' : 'Bottom Body Details',
+            child: _isUpperBody
+                ? Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildField('Chest', _chestController, _chestFocusNode)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildField('Waist', _waistController, _waistFocusNode)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildField('Shoulder', _shoulderController, _shoulderFocusNode)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildField('Sleeve', _sleeveController, _sleeveFocusNode)),
+                        ],
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildField('Hips', _hipsController, _hipsFocusNode)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildField('Thigh', _thighController, _thighFocusNode)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildField('Inseam', _inseamController, _inseamFocusNode)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildField('Length', _lengthController, _lengthFocusNode)),
+                        ],
+                      ),
+                    ],
+                  ),
           ),
           const SizedBox(height: 32),
           CustomButton(
@@ -224,9 +387,14 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
                 children: [
                   Expanded(
                     flex: 4,
-                    child: SizedBox(
-                      height: MediaQuery.of(context).size.height - 150,
-                      child: silhouetteWidget,
+                    child: Column(
+                      children: [
+                        toggleBar,
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: silhouetteWidget,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 32),
@@ -242,8 +410,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  toggleBar,
+                  const SizedBox(height: 20),
                   SizedBox(
-                    height: 280,
+                    height: 300,
                     child: silhouetteWidget,
                   ),
                   const SizedBox(height: 24),
@@ -267,8 +437,9 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
 
 class MannequinPainter extends CustomPainter {
   final String? activeField;
+  final bool isUpperBody;
 
-  MannequinPainter({this.activeField});
+  MannequinPainter({this.activeField, this.isUpperBody = true});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -302,93 +473,144 @@ class MannequinPainter extends CustomPainter {
       ..color = AppTheme.primary.withOpacity(0.5)
       ..style = PaintingStyle.fill;
 
-    // Draw Mannequin
-    // Head
-    final headCenter = Offset(w * 0.5, h * 0.15);
-    final headRadius = h * 0.055;
-    canvas.drawCircle(headCenter, headRadius, paintBase);
-    canvas.drawCircle(headCenter, headRadius, paintBaseOutline);
+    if (isUpperBody) {
+      // Draw Upper Body Mannequin
+      // Head
+      final headCenter = Offset(w * 0.5, h * 0.15);
+      final headRadius = h * 0.055;
+      canvas.drawCircle(headCenter, headRadius, paintBase);
+      canvas.drawCircle(headCenter, headRadius, paintBaseOutline);
 
-    // Neck
-    final neckPath = Path()
-      ..moveTo(w * 0.47, h * 0.20)
-      ..lineTo(w * 0.47, h * 0.24)
-      ..lineTo(w * 0.53, h * 0.24)
-      ..lineTo(w * 0.53, h * 0.20)
-      ..close();
-    canvas.drawPath(neckPath, paintBase);
-    canvas.drawPath(neckPath, paintBaseOutline);
+      // Neck
+      final neckPath = Path()
+        ..moveTo(w * 0.47, h * 0.20)
+        ..lineTo(w * 0.47, h * 0.24)
+        ..lineTo(w * 0.53, h * 0.24)
+        ..lineTo(w * 0.53, h * 0.20)
+        ..close();
+      canvas.drawPath(neckPath, paintBase);
+      canvas.drawPath(neckPath, paintBaseOutline);
 
-    // Torso (shoulders, chest, waist)
-    final torsoPath = Path()
-      ..moveTo(w * 0.32, h * 0.25)
-      ..quadraticBezierTo(w * 0.5, h * 0.27, w * 0.68, h * 0.25)
-      ..quadraticBezierTo(w * 0.68, h * 0.32, w * 0.65, h * 0.45)
-      ..lineTo(w * 0.61, h * 0.70)
-      ..lineTo(w * 0.39, h * 0.70)
-      ..lineTo(w * 0.35, h * 0.45)
-      ..quadraticBezierTo(w * 0.32, h * 0.32, w * 0.32, h * 0.25)
-      ..close();
-    
-    canvas.drawPath(torsoPath, paintBase);
-    canvas.drawPath(torsoPath, paintBaseOutline);
+      // Torso
+      final torsoPath = Path()
+        ..moveTo(w * 0.32, h * 0.25)
+        ..quadraticBezierTo(w * 0.5, h * 0.27, w * 0.68, h * 0.25)
+        ..quadraticBezierTo(w * 0.68, h * 0.32, w * 0.65, h * 0.45)
+        ..lineTo(w * 0.61, h * 0.70)
+        ..lineTo(w * 0.39, h * 0.70)
+        ..lineTo(w * 0.35, h * 0.45)
+        ..quadraticBezierTo(w * 0.32, h * 0.32, w * 0.32, h * 0.25)
+        ..close();
+      
+      canvas.drawPath(torsoPath, paintBase);
+      canvas.drawPath(torsoPath, paintBaseOutline);
 
-    // Left arm stub
-    final leftArmPath = Path()
-      ..moveTo(w * 0.32, h * 0.25)
-      ..lineTo(w * 0.26, h * 0.55)
-      ..lineTo(w * 0.31, h * 0.55)
-      ..lineTo(w * 0.35, h * 0.35)
-      ..close();
-    canvas.drawPath(leftArmPath, paintBase);
-    canvas.drawPath(leftArmPath, paintBaseOutline);
+      // Left arm stub
+      final leftArmPath = Path()
+        ..moveTo(w * 0.32, h * 0.25)
+        ..lineTo(w * 0.26, h * 0.55)
+        ..lineTo(w * 0.31, h * 0.55)
+        ..lineTo(w * 0.35, h * 0.35)
+        ..close();
+      canvas.drawPath(leftArmPath, paintBase);
+      canvas.drawPath(leftArmPath, paintBaseOutline);
 
-    // Right arm stub
-    final rightArmPath = Path()
-      ..moveTo(w * 0.68, h * 0.25)
-      ..lineTo(w * 0.74, h * 0.55)
-      ..lineTo(w * 0.69, h * 0.55)
-      ..lineTo(w * 0.65, h * 0.35)
-      ..close();
-    canvas.drawPath(rightArmPath, paintBase);
-    canvas.drawPath(rightArmPath, paintBaseOutline);
+      // Right arm stub
+      final rightArmPath = Path()
+        ..moveTo(w * 0.68, h * 0.25)
+        ..lineTo(w * 0.74, h * 0.55)
+        ..lineTo(w * 0.69, h * 0.55)
+        ..lineTo(w * 0.65, h * 0.35)
+        ..close();
+      canvas.drawPath(rightArmPath, paintBase);
+      canvas.drawPath(rightArmPath, paintBaseOutline);
 
-    // Draw Guides
-    // 1. Shoulder Guide
-    final shoulderStart = Offset(w * 0.32, h * 0.25);
-    final shoulderEnd = Offset(w * 0.68, h * 0.25);
-    final isShoulderActive = activeField == 'shoulder';
-    canvas.drawLine(shoulderStart, shoulderEnd, isShoulderActive ? paintActiveGuide : paintInactiveGuide);
-    canvas.drawCircle(shoulderStart, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
-    canvas.drawCircle(shoulderEnd, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
+      // Draw Upper Body Guides
+      // 1. Shoulder Guide
+      final shoulderStart = Offset(w * 0.32, h * 0.25);
+      final shoulderEnd = Offset(w * 0.68, h * 0.25);
+      final isShoulderActive = activeField == 'shoulder';
+      canvas.drawLine(shoulderStart, shoulderEnd, isShoulderActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(shoulderStart, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(shoulderEnd, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
 
-    // 2. Chest Guide
-    final chestStart = Offset(w * 0.34, h * 0.43);
-    final chestEnd = Offset(w * 0.66, h * 0.43);
-    final isChestActive = activeField == 'chest';
-    canvas.drawLine(chestStart, chestEnd, isChestActive ? paintActiveGuide : paintInactiveGuide);
-    canvas.drawCircle(chestStart, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
-    canvas.drawCircle(chestEnd, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
+      // 2. Chest Guide
+      final chestStart = Offset(w * 0.34, h * 0.43);
+      final chestEnd = Offset(w * 0.66, h * 0.43);
+      final isChestActive = activeField == 'chest';
+      canvas.drawLine(chestStart, chestEnd, isChestActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(chestStart, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(chestEnd, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
 
-    // 3. Waist Guide
-    final waistStart = Offset(w * 0.39, h * 0.70);
-    final waistEnd = Offset(w * 0.61, h * 0.70);
-    final isWaistActive = activeField == 'waist';
-    canvas.drawLine(waistStart, waistEnd, isWaistActive ? paintActiveGuide : paintInactiveGuide);
-    canvas.drawCircle(waistStart, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
-    canvas.drawCircle(waistEnd, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
+      // 3. Waist Guide
+      final waistStart = Offset(w * 0.39, h * 0.70);
+      final waistEnd = Offset(w * 0.61, h * 0.70);
+      final isWaistActive = activeField == 'waist';
+      canvas.drawLine(waistStart, waistEnd, isWaistActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(waistStart, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(waistEnd, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
 
-    // 4. Sleeve Guide
-    final sleeveStart = Offset(w * 0.68, h * 0.25);
-    final sleeveEnd = Offset(w * 0.74, h * 0.55);
-    final isSleeveActive = activeField == 'sleeve';
-    canvas.drawLine(sleeveStart, sleeveEnd, isSleeveActive ? paintActiveGuide : paintInactiveGuide);
-    canvas.drawCircle(sleeveStart, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
-    canvas.drawCircle(sleeveEnd, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
+      // 4. Sleeve Guide
+      final sleeveStart = Offset(w * 0.68, h * 0.25);
+      final sleeveEnd = Offset(w * 0.74, h * 0.55);
+      final isSleeveActive = activeField == 'sleeve';
+      canvas.drawLine(sleeveStart, sleeveEnd, isSleeveActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(sleeveStart, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(sleeveEnd, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
+    } else {
+      // Draw Bottom Body Mannequin (Waist, Hips, Legs)
+      final bottomPath = Path()
+        ..moveTo(w * 0.39, h * 0.12)
+        ..lineTo(w * 0.61, h * 0.12) // waist top
+        ..quadraticBezierTo(w * 0.67, h * 0.18, w * 0.67, h * 0.28) // right hip
+        ..lineTo(w * 0.64, h * 0.85) // right outer leg
+        ..lineTo(w * 0.56, h * 0.85) // right cuff
+        ..lineTo(w * 0.5, h * 0.35) // right inner leg to crotch
+        ..lineTo(w * 0.44, h * 0.85) // left inner leg from crotch
+        ..lineTo(w * 0.36, h * 0.85) // left cuff
+        ..lineTo(w * 0.33, h * 0.28) // left outer leg
+        ..quadraticBezierTo(w * 0.33, h * 0.18, w * 0.39, h * 0.12) // left hip
+        ..close();
+      canvas.drawPath(bottomPath, paintBase);
+      canvas.drawPath(bottomPath, paintBaseOutline);
+
+      // Draw Bottom Body Guides
+      // 1. Hips Guide
+      final hipsStart = Offset(w * 0.33, h * 0.28);
+      final hipsEnd = Offset(w * 0.67, h * 0.28);
+      final isHipsActive = activeField == 'hips';
+      canvas.drawLine(hipsStart, hipsEnd, isHipsActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(hipsStart, isHipsActive ? 5 : 3.5, isHipsActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(hipsEnd, isHipsActive ? 5 : 3.5, isHipsActive ? paintActiveDot : paintInactiveDot);
+
+      // 2. Thigh Guide
+      final thighStart = Offset(w * 0.51, h * 0.45);
+      final thighEnd = Offset(w * 0.66, h * 0.45);
+      final isThighActive = activeField == 'thigh';
+      canvas.drawLine(thighStart, thighEnd, isThighActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(thighStart, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(thighEnd, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
+
+      // 3. Inseam Guide
+      final inseamStart = Offset(w * 0.50, h * 0.35);
+      final inseamEnd = Offset(w * 0.56, h * 0.85);
+      final isInseamActive = activeField == 'inseam';
+      canvas.drawLine(inseamStart, inseamEnd, isInseamActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(inseamStart, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(inseamEnd, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
+
+      // 4. Length Guide
+      final lengthStart = Offset(w * 0.61, h * 0.12);
+      final lengthEnd = Offset(w * 0.64, h * 0.85);
+      final isLengthActive = activeField == 'length';
+      canvas.drawLine(lengthStart, lengthEnd, isLengthActive ? paintActiveGuide : paintInactiveGuide);
+      canvas.drawCircle(lengthStart, isLengthActive ? 5 : 3.5, isLengthActive ? paintActiveDot : paintInactiveDot);
+      canvas.drawCircle(lengthEnd, isLengthActive ? 5 : 3.5, isLengthActive ? paintActiveDot : paintInactiveDot);
+    }
   }
 
   @override
   bool shouldRepaint(covariant MannequinPainter oldDelegate) {
-    return oldDelegate.activeField != activeField;
+    return oldDelegate.activeField != activeField || oldDelegate.isUpperBody != isUpperBody;
   }
 }

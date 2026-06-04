@@ -90,12 +90,34 @@ class SupabaseService {
     
     // Check if measurement exists
     final existing = await getMeasurement(customerId);
-    if (existing != null) {
-      final response = await _client.from('measurements').update(data).eq('id', existing.id).select().single();
-      return Measurement.fromJson(response);
-    } else {
-      final response = await _client.from('measurements').insert(data).select().single();
-      return Measurement.fromJson(response);
+    try {
+      if (existing != null) {
+        final response = await _client.from('measurements').update(data).eq('id', existing.id).select().single();
+        return Measurement.fromJson(response);
+      } else {
+        final response = await _client.from('measurements').insert(data).select().single();
+        return Measurement.fromJson(response);
+      }
+    } catch (e) {
+      final errorStr = e.toString().toLowerCase();
+      if (errorStr.contains('hips') || errorStr.contains('thigh') || errorStr.contains('inseam') || errorStr.contains('length')) {
+        // Fallback data containing only original upper body fields
+        final fallbackData = {
+          'customer_id': customerId,
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
+          if (data['chest'] != null) 'chest': data['chest'],
+          if (data['waist'] != null) 'waist': data['waist'],
+          if (data['shoulder'] != null) 'shoulder': data['shoulder'],
+          if (data['sleeve'] != null) 'sleeve': data['sleeve'],
+        };
+        if (existing != null) {
+          await _client.from('measurements').update(fallbackData).eq('id', existing.id);
+        } else {
+          await _client.from('measurements').insert(fallbackData);
+        }
+        throw Exception('Upper body saved! Note: Run database migration to save Bottom Measurements: ALTER TABLE measurements ADD COLUMN IF NOT EXISTS hips TEXT, ADD COLUMN IF NOT EXISTS thigh TEXT, ADD COLUMN IF NOT EXISTS inseam TEXT, ADD COLUMN IF NOT EXISTS length TEXT;');
+      }
+      rethrow;
     }
   }
 

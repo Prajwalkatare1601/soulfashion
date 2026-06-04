@@ -69,13 +69,22 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       buffer.writeln('📅 *Delivery Due:* ${_formatDate(widget.customer.dueDate!)}');
     }
     
-    buffer.writeln('\n📏 *MEASUREMENTS*');
-    buffer.writeln('----------------------------------');
     if (_measurement != null) {
+      buffer.writeln('[Upper Body]');
       buffer.writeln('• *Chest:* ${_measurement!.chest?.isNotEmpty == true ? "${_measurement!.chest} in" : "-"}');
       buffer.writeln('• *Waist:* ${_measurement!.waist?.isNotEmpty == true ? "${_measurement!.waist} in" : "-"}');
       buffer.writeln('• *Shoulder:* ${_measurement!.shoulder?.isNotEmpty == true ? "${_measurement!.shoulder} in" : "-"}');
       buffer.writeln('• *Sleeve:* ${_measurement!.sleeve?.isNotEmpty == true ? "${_measurement!.sleeve} in" : "-"}');
+      if (_measurement!.hips?.isNotEmpty == true || 
+          _measurement!.thigh?.isNotEmpty == true || 
+          _measurement!.inseam?.isNotEmpty == true || 
+          _measurement!.length?.isNotEmpty == true) {
+        buffer.writeln('\n[Bottom Body]');
+        buffer.writeln('• *Hips:* ${_measurement!.hips?.isNotEmpty == true ? "${_measurement!.hips} in" : "-"}');
+        buffer.writeln('• *Thigh:* ${_measurement!.thigh?.isNotEmpty == true ? "${_measurement!.thigh} in" : "-"}');
+        buffer.writeln('• *Inseam:* ${_measurement!.inseam?.isNotEmpty == true ? "${_measurement!.inseam} in" : "-"}');
+        buffer.writeln('• *Length:* ${_measurement!.length?.isNotEmpty == true ? "${_measurement!.length} in" : "-"}');
+      }
     } else {
       buffer.writeln('No measurements recorded yet.');
     }
@@ -393,13 +402,56 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                 ],
               ),
             )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _MeasurementValue(label: 'Chest', value: _measurement!.chest),
-                _MeasurementValue(label: 'Waist', value: _measurement!.waist),
-                _MeasurementValue(label: 'Shoulder', value: _measurement!.shoulder),
-                _MeasurementValue(label: 'Sleeve', value: _measurement!.sleeve),
+                const Text(
+                  'Upper Body',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppTheme.primary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _MeasurementValue(label: 'Chest', value: _measurement!.chest),
+                    _MeasurementValue(label: 'Waist', value: _measurement!.waist),
+                    _MeasurementValue(label: 'Shoulder', value: _measurement!.shoulder),
+                    _MeasurementValue(label: 'Sleeve', value: _measurement!.sleeve),
+                  ],
+                ),
+                if (_measurement!.hips != null ||
+                    _measurement!.thigh != null ||
+                    _measurement!.inseam != null ||
+                    _measurement!.length != null) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(color: Color(0xFFE2E8F0)),
+                  ),
+                  const Text(
+                    'Bottom Body',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: AppTheme.primary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _MeasurementValue(label: 'Hips', value: _measurement!.hips),
+                      _MeasurementValue(label: 'Thigh', value: _measurement!.thigh),
+                      _MeasurementValue(label: 'Inseam', value: _measurement!.inseam),
+                      _MeasurementValue(label: 'Length', value: _measurement!.length),
+                    ],
+                  ),
+                ],
               ],
             ),
     );
