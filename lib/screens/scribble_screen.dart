@@ -259,6 +259,25 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Digital Note'),
+        actions: [
+          _isSaving
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : TextButton.icon(
+                  onPressed: _saveScribble,
+                  icon: const Icon(Icons.check, color: Colors.white),
+                  label: const Text('Save Note', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
@@ -410,6 +429,7 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
             right: 0,
             child: Center(
               child: Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 32),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -419,56 +439,60 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
                   ],
                   border: Border.all(color: const Color(0xFFE3E8EE)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Color dots
-                    _buildColorDot(Colors.black, 'Onyx'),
-                    const SizedBox(width: 8),
-                    _buildColorDot(const Color(0xFF1E3A8A), 'Navy'), 
-                    const SizedBox(width: 8),
-                    _buildColorDot(const Color(0xFF10B981), 'Teal'), 
-                    const SizedBox(width: 8),
-                    _buildColorDot(const Color(0xFFEF4444), 'Red'), 
-                    
-                    const SizedBox(width: 16),
-                    Container(width: 1, height: 20, color: const Color(0xFFE3E8EE)),
-                    const SizedBox(width: 16),
-                    
-                    // Stroke width selection
-                    _buildStrokePill(2.0, 'Fine'),
-                    const SizedBox(width: 8),
-                    _buildStrokePill(5.0, 'Med'),
-                    const SizedBox(width: 8),
-                    _buildStrokePill(9.0, 'Bold'),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Color dots
+                      _buildColorDot(Colors.black, 'Onyx'),
+                      const SizedBox(width: 8),
+                      _buildColorDot(const Color(0xFF1E3A8A), 'Navy'), 
+                      const SizedBox(width: 8),
+                      _buildColorDot(const Color(0xFF10B981), 'Teal'), 
+                      const SizedBox(width: 8),
+                      _buildColorDot(const Color(0xFFEF4444), 'Red'), 
+                      
+                      const SizedBox(width: 16),
+                      Container(width: 1, height: 20, color: const Color(0xFFE3E8EE)),
+                      const SizedBox(width: 16),
+                      
+                      // Stroke width selection
+                      _buildStrokePill(2.0, 'Fine'),
+                      const SizedBox(width: 8),
+                      _buildStrokePill(5.0, 'Med'),
+                      const SizedBox(width: 8),
+                      _buildStrokePill(9.0, 'Bold'),
 
-                    const SizedBox(width: 16),
-                    Container(width: 1, height: 20, color: const Color(0xFFE3E8EE)),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
+                      Container(width: 1, height: 20, color: const Color(0xFFE3E8EE)),
+                      const SizedBox(width: 16),
 
-                    // Paper style cycle
-                    IconButton(
-                      icon: Icon(_getPaperIcon(_paperType), color: AppTheme.textSecondary, size: 20),
-                      onPressed: _cyclePaperType,
-                      tooltip: 'Paper Style: ${_paperType.name}',
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Legs template toggle
-                    IconButton(
-                      icon: Icon(
-                        _showMannequin ? Icons.accessibility_new_rounded : Icons.accessibility_new_outlined,
-                        color: _showMannequin ? AppTheme.primary : AppTheme.textSecondary,
-                        size: 20,
+                      // Paper style cycle
+                      IconButton(
+                        icon: Icon(_getPaperIcon(_paperType), color: AppTheme.textSecondary, size: 20),
+                        onPressed: _cyclePaperType,
+                        tooltip: 'Paper Style: ${_paperType.name}',
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _showMannequin = !_showMannequin;
-                        });
-                      },
-                      tooltip: 'Bottom Template Guide',
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+
+                      // Legs template toggle
+                      IconButton(
+                        icon: Icon(
+                          _showMannequin ? Icons.accessibility_new_rounded : Icons.accessibility_new_outlined,
+                          color: _showMannequin ? AppTheme.primary : AppTheme.textSecondary,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showMannequin = !_showMannequin;
+                          });
+                        },
+                        tooltip: 'Bottom Template Guide',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -481,6 +505,7 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
             right: 0,
             child: Center(
               child: Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 32),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
@@ -490,94 +515,87 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
                   ],
                   border: Border.all(color: const Color(0xFFE3E8EE)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Mode Toggle Draw/Pan
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.background,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _ModeToggleButton(
-                            icon: Icons.draw_outlined,
-                            label: 'Draw',
-                            isSelected: !_isScrollMode,
-                            onTap: () => setState(() => _isScrollMode = false),
-                          ),
-                          _ModeToggleButton(
-                            icon: Icons.pan_tool_outlined,
-                            label: 'Pan',
-                            isSelected: _isScrollMode,
-                            onTap: () => setState(() => _isScrollMode = true),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(width: 1, height: 24, color: const Color(0xFFE3E8EE)),
-                    const SizedBox(width: 12),
-
-                    // Highlighter pen mode toggle
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _isHighlighter ? AppTheme.primary.withValues(alpha: 0.08) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          _isHighlighter ? Icons.border_color_rounded : Icons.edit_rounded,
-                          color: _isHighlighter ? AppTheme.primary : AppTheme.textSecondary,
-                          size: 20,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Mode Toggle Draw/Pan
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.background,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _isHighlighter = !_isHighlighter;
-                            // Set default sizes corresponding to the mode
-                            _selectedStroke = _isHighlighter ? 12.0 : 4.0;
-                          });
-                        },
-                        tooltip: _isHighlighter ? 'Highlighter Mode' : 'Pen Mode',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _ModeToggleButton(
+                              icon: Icons.draw_outlined,
+                              label: 'Draw',
+                              isSelected: !_isScrollMode,
+                              onTap: () => setState(() => _isScrollMode = false),
+                            ),
+                            _ModeToggleButton(
+                              icon: Icons.pan_tool_outlined,
+                              label: 'Pan',
+                              isSelected: _isScrollMode,
+                              onTap: () => setState(() => _isScrollMode = true),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
+                      const SizedBox(width: 16),
+                      Container(width: 1, height: 24, color: const Color(0xFFE3E8EE)),
+                      const SizedBox(width: 12),
 
-                    // Actions
-                    IconButton(
-                      onPressed: _undo,
-                      icon: const Icon(Icons.undo, color: AppTheme.textSecondary, size: 20),
-                      tooltip: 'Undo',
-                    ),
-                    IconButton(
-                      onPressed: _redo,
-                      icon: const Icon(Icons.redo, color: AppTheme.textSecondary, size: 20),
-                      tooltip: 'Redo',
-                    ),
-                    IconButton(
-                      onPressed: _clear,
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                      tooltip: 'Clear All',
-                    ),
-                  ],
+                      // Highlighter pen mode toggle
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _isHighlighter ? AppTheme.primary.withValues(alpha: 0.08) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            _isHighlighter ? Icons.border_color_rounded : Icons.edit_rounded,
+                            color: _isHighlighter ? AppTheme.primary : AppTheme.textSecondary,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isHighlighter = !_isHighlighter;
+                              // Set default sizes corresponding to the mode
+                              _selectedStroke = _isHighlighter ? 12.0 : 4.0;
+                            });
+                          },
+                          tooltip: _isHighlighter ? 'Highlighter Mode' : 'Pen Mode',
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+
+                      // Actions
+                      IconButton(
+                        onPressed: _undo,
+                        icon: const Icon(Icons.undo, color: AppTheme.textSecondary, size: 20),
+                        tooltip: 'Undo',
+                      ),
+                      IconButton(
+                        onPressed: _redo,
+                        icon: const Icon(Icons.redo, color: AppTheme.textSecondary, size: 20),
+                        tooltip: 'Redo',
+                      ),
+                      IconButton(
+                        onPressed: _clear,
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: 'Clear All',
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: FloatingActionButton.extended(
-          onPressed: _isSaving ? null : _saveScribble,
-          icon: _isSaving 
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Icon(Icons.check),
-          label: Text(_isSaving ? 'Saving...' : 'Save Note', style: const TextStyle(fontWeight: FontWeight.w600)),
-        ),
       ),
     );
   }

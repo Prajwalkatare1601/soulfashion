@@ -415,14 +415,19 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _MeasurementValue(label: 'Chest', value: _measurement!.chest),
-                    _MeasurementValue(label: 'Waist', value: _measurement!.waist),
-                    _MeasurementValue(label: 'Shoulder', value: _measurement!.shoulder),
-                    _MeasurementValue(label: 'Sleeve', value: _measurement!.sleeve),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceAround,
+                    spacing: 16,
+                    runSpacing: 12,
+                    children: [
+                      _MeasurementValue(label: 'Chest', value: _measurement!.chest),
+                      _MeasurementValue(label: 'Waist', value: _measurement!.waist),
+                      _MeasurementValue(label: 'Shoulder', value: _measurement!.shoulder),
+                      _MeasurementValue(label: 'Sleeve', value: _measurement!.sleeve),
+                    ],
+                  ),
                 ),
                 if (_measurement!.hips != null ||
                     _measurement!.thigh != null ||
@@ -442,14 +447,19 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _MeasurementValue(label: 'Hips', value: _measurement!.hips),
-                      _MeasurementValue(label: 'Thigh', value: _measurement!.thigh),
-                      _MeasurementValue(label: 'Inseam', value: _measurement!.inseam),
-                      _MeasurementValue(label: 'Length', value: _measurement!.length),
-                    ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceAround,
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        _MeasurementValue(label: 'Hips', value: _measurement!.hips),
+                        _MeasurementValue(label: 'Thigh', value: _measurement!.thigh),
+                        _MeasurementValue(label: 'Inseam', value: _measurement!.inseam),
+                        _MeasurementValue(label: 'Length', value: _measurement!.length),
+                      ],
+                    ),
                   ),
                 ],
               ],
