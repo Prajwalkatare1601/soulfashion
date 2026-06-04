@@ -1,8 +1,38 @@
+enum OrderStatus {
+  ordered,
+  completed,
+  delivered;
+
+  String get label {
+    switch (this) {
+      case OrderStatus.ordered:
+        return 'Ordered';
+      case OrderStatus.completed:
+        return 'Completed';
+      case OrderStatus.delivered:
+        return 'Delivered';
+    }
+  }
+
+  static OrderStatus fromString(String? value) {
+    switch (value) {
+      case 'completed':
+        return OrderStatus.completed;
+      case 'delivered':
+        return OrderStatus.delivered;
+      case 'ordered':
+      default:
+        return OrderStatus.ordered;
+    }
+  }
+}
+
 class Customer {
   final String id;
   final String name;
   final String? phone;
   final String? photoUrl;
+  final OrderStatus orderStatus;
   final DateTime createdAt;
 
   Customer({
@@ -10,6 +40,7 @@ class Customer {
     required this.name,
     this.phone,
     this.photoUrl,
+    this.orderStatus = OrderStatus.ordered,
     required this.createdAt,
   });
 
@@ -19,7 +50,10 @@ class Customer {
       name: json['name'] as String,
       phone: json['phone'] as String?,
       photoUrl: json['photo_url'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      orderStatus: OrderStatus.fromString(json['order_status'] as String?),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -28,6 +62,7 @@ class Customer {
       'name': name,
       if (phone != null) 'phone': phone,
       if (photoUrl != null) 'photo_url': photoUrl,
+      'order_status': orderStatus.name,
     };
   }
 }
@@ -89,6 +124,36 @@ class Scribble {
 
   factory Scribble.fromJson(Map<String, dynamic> json) {
     return Scribble(
+      id: json['id'] as String,
+      customerId: json['customer_id'] as String,
+      imageUrl: json['image_url'] as String,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'customer_id': customerId,
+      'image_url': imageUrl,
+    };
+  }
+}
+
+class ReferencePhoto {
+  final String id;
+  final String customerId;
+  final String imageUrl;
+  final DateTime createdAt;
+
+  ReferencePhoto({
+    required this.id,
+    required this.customerId,
+    required this.imageUrl,
+    required this.createdAt,
+  });
+
+  factory ReferencePhoto.fromJson(Map<String, dynamic> json) {
+    return ReferencePhoto(
       id: json['id'] as String,
       customerId: json['customer_id'] as String,
       imageUrl: json['image_url'] as String,

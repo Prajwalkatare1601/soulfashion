@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/supabase_service.dart';
@@ -33,9 +33,9 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addCustomer(String name, String? phone, File? photoFile) async {
+  Future<void> addCustomer(String name, String? phone, Uint8List? photoBytes) async {
     try {
-      final newCustomer = await _service.addCustomer(name, phone, photoFile);
+      final newCustomer = await _service.addCustomer(name, phone, photoBytes);
       _customers.insert(0, newCustomer);
       notifyListeners();
     } catch (e) {
@@ -50,6 +50,29 @@ class CustomerProvider extends ChangeNotifier {
       await _service.deleteCustomer(id);
       _customers.removeWhere((c) => c.id == id);
       notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateOrderStatus(String customerId, OrderStatus status) async {
+    try {
+      await _service.updateOrderStatus(customerId, status);
+      final index = _customers.indexWhere((c) => c.id == customerId);
+      if (index != -1) {
+        final old = _customers[index];
+        _customers[index] = Customer(
+          id: old.id,
+          name: old.name,
+          phone: old.phone,
+          photoUrl: old.photoUrl,
+          orderStatus: status,
+          createdAt: old.createdAt,
+        );
+        notifyListeners();
+      }
     } catch (e) {
       _error = e.toString();
       notifyListeners();
