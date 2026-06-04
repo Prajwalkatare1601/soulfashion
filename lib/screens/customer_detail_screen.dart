@@ -75,12 +75,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       buffer.writeln('• *Waist:* ${_measurement!.waist?.isNotEmpty == true ? "${_measurement!.waist} in" : "-"}');
       buffer.writeln('• *Shoulder:* ${_measurement!.shoulder?.isNotEmpty == true ? "${_measurement!.shoulder} in" : "-"}');
       buffer.writeln('• *Sleeve:* ${_measurement!.sleeve?.isNotEmpty == true ? "${_measurement!.sleeve} in" : "-"}');
-      if (_measurement!.hips?.isNotEmpty == true || 
-          _measurement!.thigh?.isNotEmpty == true || 
+      if (_measurement!.thigh?.isNotEmpty == true || 
           _measurement!.inseam?.isNotEmpty == true || 
           _measurement!.length?.isNotEmpty == true) {
         buffer.writeln('\n[Bottom Body]');
-        buffer.writeln('• *Hips:* ${_measurement!.hips?.isNotEmpty == true ? "${_measurement!.hips} in" : "-"}');
         buffer.writeln('• *Thigh:* ${_measurement!.thigh?.isNotEmpty == true ? "${_measurement!.thigh} in" : "-"}');
         buffer.writeln('• *Inseam:* ${_measurement!.inseam?.isNotEmpty == true ? "${_measurement!.inseam} in" : "-"}');
         buffer.writeln('• *Length:* ${_measurement!.length?.isNotEmpty == true ? "${_measurement!.length} in" : "-"}');
@@ -429,8 +427,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                     ],
                   ),
                 ),
-                if (_measurement!.hips != null ||
-                    _measurement!.thigh != null ||
+                if (_measurement!.thigh != null ||
                     _measurement!.inseam != null ||
                     _measurement!.length != null) ...[
                   const Padding(
@@ -454,7 +451,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       spacing: 16,
                       runSpacing: 12,
                       children: [
-                        _MeasurementValue(label: 'Hips', value: _measurement!.hips),
                         _MeasurementValue(label: 'Thigh', value: _measurement!.thigh),
                         _MeasurementValue(label: 'Inseam', value: _measurement!.inseam),
                         _MeasurementValue(label: 'Length', value: _measurement!.length),

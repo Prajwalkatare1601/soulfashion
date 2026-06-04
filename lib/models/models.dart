@@ -80,7 +80,6 @@ class Measurement {
   final String? waist;
   final String? shoulder;
   final String? sleeve;
-  final String? hips;
   final String? thigh;
   final String? inseam;
   final String? length;
@@ -93,7 +92,6 @@ class Measurement {
     this.waist,
     this.shoulder,
     this.sleeve,
-    this.hips,
     this.thigh,
     this.inseam,
     this.length,
@@ -108,7 +106,6 @@ class Measurement {
       waist: json['waist'] as String?,
       shoulder: json['shoulder'] as String?,
       sleeve: json['sleeve'] as String?,
-      hips: json['hips'] as String?,
       thigh: json['thigh'] as String?,
       inseam: json['inseam'] as String?,
       length: json['length'] as String?,
@@ -123,7 +120,6 @@ class Measurement {
       if (waist != null) 'waist': waist,
       if (shoulder != null) 'shoulder': shoulder,
       if (sleeve != null) 'sleeve': sleeve,
-      if (hips != null) 'hips': hips,
       if (thigh != null) 'thigh': thigh,
       if (inseam != null) 'inseam': inseam,
       if (length != null) 'length': length,

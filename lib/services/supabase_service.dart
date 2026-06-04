@@ -100,7 +100,7 @@ class SupabaseService {
       }
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
-      if (errorStr.contains('hips') || errorStr.contains('thigh') || errorStr.contains('inseam') || errorStr.contains('length')) {
+      if (errorStr.contains('thigh') || errorStr.contains('inseam') || errorStr.contains('length')) {
         // Fallback data containing only original upper body fields
         final fallbackData = {
           'customer_id': customerId,
@@ -115,7 +115,7 @@ class SupabaseService {
         } else {
           await _client.from('measurements').insert(fallbackData);
         }
-        throw Exception('Upper body saved! Note: Run database migration to save Bottom Measurements: ALTER TABLE measurements ADD COLUMN IF NOT EXISTS hips TEXT, ADD COLUMN IF NOT EXISTS thigh TEXT, ADD COLUMN IF NOT EXISTS inseam TEXT, ADD COLUMN IF NOT EXISTS length TEXT;');
+        throw Exception('Upper body saved! Note: Run database migration to save Bottom Measurements: ALTER TABLE measurements ADD COLUMN IF NOT EXISTS thigh TEXT, ADD COLUMN IF NOT EXISTS inseam TEXT, ADD COLUMN IF NOT EXISTS length TEXT;');
       }
       rethrow;
     }

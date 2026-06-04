@@ -35,12 +35,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   final _sleeveFocusNode = FocusNode();
 
   // Bottom body controllers & focus nodes
-  final _hipsController = TextEditingController();
   final _thighController = TextEditingController();
   final _inseamController = TextEditingController();
   final _lengthController = TextEditingController();
 
-  final _hipsFocusNode = FocusNode();
   final _thighFocusNode = FocusNode();
   final _inseamFocusNode = FocusNode();
   final _lengthFocusNode = FocusNode();
@@ -59,7 +57,6 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
       _shoulderController.text = widget.existingMeasurement!.shoulder ?? '';
       _sleeveController.text = widget.existingMeasurement!.sleeve ?? '';
       
-      _hipsController.text = widget.existingMeasurement!.hips ?? '';
       _thighController.text = widget.existingMeasurement!.thigh ?? '';
       _inseamController.text = widget.existingMeasurement!.inseam ?? '';
       _lengthController.text = widget.existingMeasurement!.length ?? '';
@@ -80,9 +77,6 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     });
 
     // Bottom body focus listeners
-    _hipsFocusNode.addListener(() {
-      if (_hipsFocusNode.hasFocus) setState(() => _activeField = 'hips');
-    });
     _thighFocusNode.addListener(() {
       if (_thighFocusNode.hasFocus) setState(() => _activeField = 'thigh');
     });
@@ -106,12 +100,10 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     _shoulderFocusNode.dispose();
     _sleeveFocusNode.dispose();
 
-    _hipsController.dispose();
     _thighController.dispose();
     _inseamController.dispose();
     _lengthController.dispose();
 
-    _hipsFocusNode.dispose();
     _thighFocusNode.dispose();
     _inseamFocusNode.dispose();
     _lengthFocusNode.dispose();
@@ -128,7 +120,6 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
         'waist': _waistController.text.trim(),
         'shoulder': _shoulderController.text.trim(),
         'sleeve': _sleeveController.text.trim(),
-        'hips': _hipsController.text.trim(),
         'thigh': _thighController.text.trim(),
         'inseam': _inseamController.text.trim(),
         'length': _lengthController.text.trim(),
@@ -185,9 +176,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
       }
     } else {
       // Map canvas lower zones to focus nodes
-      if (y >= 0.12 && y <= 0.32) {
-        _hipsFocusNode.requestFocus();
-      } else if (y > 0.32 && y <= 0.52) {
+      if (y > 0.32 && y <= 0.52) {
         _thighFocusNode.requestFocus();
       } else if (y > 0.52 && y <= 0.88) {
         if (x >= 0.55) {
@@ -329,18 +318,18 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _buildField('Hips', _hipsController, _hipsFocusNode)),
-                          const SizedBox(width: 16),
                           Expanded(child: _buildField('Thigh', _thighController, _thighFocusNode)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildField('Inseam', _inseamController, _inseamFocusNode)),
                         ],
                       ),
                       const SizedBox(height: 24),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _buildField('Inseam', _inseamController, _inseamFocusNode)),
-                          const SizedBox(width: 16),
                           Expanded(child: _buildField('Length', _lengthController, _lengthFocusNode)),
+                          const SizedBox(width: 16),
+                          const Spacer(),
                         ],
                       ),
                     ],
@@ -575,15 +564,7 @@ class MannequinPainter extends CustomPainter {
       canvas.drawPath(bottomPath, paintBaseOutline);
 
       // Draw Bottom Body Guides
-      // 1. Hips Guide
-      final hipsStart = Offset(w * 0.33, h * 0.28);
-      final hipsEnd = Offset(w * 0.67, h * 0.28);
-      final isHipsActive = activeField == 'hips';
-      canvas.drawLine(hipsStart, hipsEnd, isHipsActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(hipsStart, isHipsActive ? 5 : 3.5, isHipsActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(hipsEnd, isHipsActive ? 5 : 3.5, isHipsActive ? paintActiveDot : paintInactiveDot);
-
-      // 2. Thigh Guide
+      // 1. Thigh Guide
       final thighStart = Offset(w * 0.51, h * 0.45);
       final thighEnd = Offset(w * 0.66, h * 0.45);
       final isThighActive = activeField == 'thigh';
@@ -591,7 +572,7 @@ class MannequinPainter extends CustomPainter {
       canvas.drawCircle(thighStart, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
       canvas.drawCircle(thighEnd, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
 
-      // 3. Inseam Guide
+      // 2. Inseam Guide
       final inseamStart = Offset(w * 0.50, h * 0.35);
       final inseamEnd = Offset(w * 0.56, h * 0.85);
       final isInseamActive = activeField == 'inseam';
@@ -599,7 +580,7 @@ class MannequinPainter extends CustomPainter {
       canvas.drawCircle(inseamStart, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
       canvas.drawCircle(inseamEnd, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
 
-      // 4. Length Guide
+      // 3. Length Guide
       final lengthStart = Offset(w * 0.61, h * 0.12);
       final lengthEnd = Offset(w * 0.64, h * 0.85);
       final isLengthActive = activeField == 'length';
