@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTimeRange? _selectedDateRange;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _sortByUrgency = false;
   
   // Gallery zoom state
   double _crossAxisCount = 3;
@@ -84,6 +85,54 @@ class _HomeScreenState extends State<HomeScreen> {
     return groups;
   }
 
+  Map<String, List<Customer>> _groupCustomersByUrgency(List<Customer> customers) {
+    final Map<String, List<Customer>> groups = {};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (var customer in customers) {
+      String groupTitle;
+      if (customer.orderStatus == OrderStatus.delivered) {
+        groupTitle = 'Completed & Delivered';
+      } else if (customer.dueDate == null) {
+        groupTitle = 'No Deadline';
+      } else {
+        final diff = customer.dueDate!.difference(today).inDays;
+        if (diff < 0) {
+          groupTitle = 'Overdue';
+        } else if (diff == 0) {
+          groupTitle = 'Due Today';
+        } else if (diff == 1) {
+          groupTitle = 'Due Tomorrow';
+        } else if (diff <= 7) {
+          groupTitle = 'Due This Week';
+        } else {
+          groupTitle = 'Due Later';
+        }
+      }
+
+      if (!groups.containsKey(groupTitle)) {
+        groups[groupTitle] = [];
+      }
+      groups[groupTitle]!.add(customer);
+    }
+
+    final Map<String, List<Customer>> sortedGroups = {};
+    final orderedKeys = ['Overdue', 'Due Today', 'Due Tomorrow', 'Due This Week', 'Due Later', 'No Deadline', 'Completed & Delivered'];
+    for (var key in orderedKeys) {
+      if (groups.containsKey(key)) {
+        sortedGroups[key] = groups[key]!;
+      }
+    }
+    groups.forEach((key, value) {
+      if (!sortedGroups.containsKey(key)) {
+        sortedGroups[key] = value;
+      }
+    });
+
+    return sortedGroups;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -117,6 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     Uint8List? selectedImageBytes;
+    DateTime? selectedDueDate;
 
     showDialog(
       context: context,
@@ -211,6 +261,74 @@ class _HomeScreenState extends State<HomeScreen> {
                       keyboardType: TextInputType.phone,
                       prefixIcon: Icons.phone_outlined,
                     ),
+                    const SizedBox(height: 16),
+                    // Due Date Picker Field
+                    InkWell(
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDueDate ?? DateTime.now().add(const Duration(days: 7)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.light(
+                                  primary: AppTheme.primary,
+                                  onPrimary: Colors.white,
+                                  surface: AppTheme.surface,
+                                  onSurface: AppTheme.textPrimary,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
+                        );
+                        if (picked != null) {
+                          setDialogState(() => selectedDueDate = picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE3E8EE), width: 1),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined, color: AppTheme.textSecondary, size: 18),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Delivery Due Date', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    selectedDueDate != null
+                                        ? '${selectedDueDate!.day}/${selectedDueDate!.month}/${selectedDueDate!.year}'
+                                        : 'Select due date (Optional)',
+                                    style: TextStyle(
+                                      color: selectedDueDate != null ? AppTheme.textPrimary : AppTheme.textSecondary,
+                                      fontWeight: selectedDueDate != null ? FontWeight.bold : FontWeight.normal,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (selectedDueDate != null)
+                              GestureDetector(
+                                onTap: () {
+                                  setDialogState(() => selectedDueDate = null);
+                                },
+                                child: const Icon(Icons.clear, color: AppTheme.textSecondary, size: 18),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -237,6 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             nameController.text.trim(),
                             phoneController.text.trim(),
                             selectedImageBytes,
+                            dueDate: selectedDueDate,
                           );
                           
                           if (context.mounted) Navigator.pop(context);
@@ -259,6 +378,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         actions: [
+          IconButton(
+            icon: Icon(
+              _sortByUrgency ? Icons.alarm_on_rounded : Icons.sort_rounded,
+              color: _sortByUrgency ? AppTheme.primary : null,
+            ),
+            onPressed: () {
+              setState(() {
+                _sortByUrgency = !_sortByUrgency;
+              });
+            },
+            tooltip: _sortByUrgency ? 'Sorted by Urgency' : 'Sort by Urgency',
+          ),
           IconButton(
             icon: Icon(
               Icons.calendar_month_outlined,
@@ -444,6 +575,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   return (nameMatches || phoneMatches) && statusMatches && dateMatches;
                 }).toList();
+
+                if (_sortByUrgency) {
+                  filteredCustomers.sort((a, b) {
+                    if (a.orderStatus == OrderStatus.delivered && b.orderStatus != OrderStatus.delivered) return 1;
+                    if (b.orderStatus == OrderStatus.delivered && a.orderStatus != OrderStatus.delivered) return -1;
+                    
+                    if (a.dueDate == null && b.dueDate != null) return 1;
+                    if (b.dueDate == null && a.dueDate != null) return -1;
+                    if (a.dueDate == null && b.dueDate == null) {
+                      return b.createdAt.compareTo(a.createdAt);
+                    }
+                    return a.dueDate!.compareTo(b.dueDate!);
+                  });
+                }
                 
                 // Show date filter active indicator
                 Widget? dateFilterIndicator;
@@ -477,7 +622,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                final groupedCustomers = _groupCustomersByDate(filteredCustomers);
+                final groupedCustomers = _sortByUrgency
+                    ? _groupCustomersByUrgency(filteredCustomers)
+                    : _groupCustomersByDate(filteredCustomers);
                 final keys = groupedCustomers.keys.toList();
             
                 return GestureDetector(
@@ -552,6 +699,54 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCustomerGridItem(BuildContext context, Customer customer, CustomerProvider provider) {
     final statusColor = _statusColor(customer.orderStatus);
 
+    Widget? dueDateBadge;
+    if (customer.dueDate != null && customer.orderStatus != OrderStatus.delivered) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final difference = customer.dueDate!.difference(today).inDays;
+      
+      String text;
+      Color badgeBg;
+      Color badgeText = Colors.white;
+      
+      if (difference < 0) {
+        text = 'Overdue';
+        badgeBg = const Color(0xFFEF4444); // Red
+      } else if (difference == 0) {
+        text = 'Today';
+        badgeBg = const Color(0xFFF59E0B); // Amber
+      } else if (difference == 1) {
+        text = 'Tomorrow';
+        badgeBg = const Color(0xFF3B82F6); // Blue
+      } else {
+        text = '$difference d';
+        badgeBg = AppTheme.primary.withOpacity(0.85);
+      }
+      
+      dueDateBadge = Positioned(
+        bottom: 8,
+        left: 8,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeBg,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 4),
+            ],
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: badgeText,
+              fontSize: _crossAxisCount > 4 ? 8 : 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -618,6 +813,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+                  if (dueDateBadge != null) dueDateBadge,
                 ],
               ),
             ),

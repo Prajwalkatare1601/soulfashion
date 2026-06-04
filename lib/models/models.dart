@@ -34,6 +34,7 @@ class Customer {
   final String? photoUrl;
   final OrderStatus orderStatus;
   final DateTime createdAt;
+  final DateTime? dueDate;
 
   Customer({
     required this.id,
@@ -42,6 +43,7 @@ class Customer {
     this.photoUrl,
     this.orderStatus = OrderStatus.ordered,
     required this.createdAt,
+    this.dueDate,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,9 @@ class Customer {
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'] as String)
+          : null,
     );
   }
 
@@ -63,6 +68,7 @@ class Customer {
       if (phone != null) 'phone': phone,
       if (photoUrl != null) 'photo_url': photoUrl,
       'order_status': orderStatus.name,
+      if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
     };
   }
 }

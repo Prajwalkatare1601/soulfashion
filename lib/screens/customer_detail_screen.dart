@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
@@ -55,11 +56,56 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     }
   }
 
+  void _shareDetails() {
+    final buffer = StringBuffer();
+    buffer.writeln('👗 *SOUL FASHION BOUTIQUE* 👗');
+    buffer.writeln('----------------------------------');
+    buffer.writeln('👤 *Customer:* ${widget.customer.name}');
+    if (widget.customer.phone != null && widget.customer.phone!.isNotEmpty) {
+      buffer.writeln('📞 *Phone:* ${widget.customer.phone}');
+    }
+    buffer.writeln('📦 *Status:* ${_currentStatus.label}');
+    if (widget.customer.dueDate != null) {
+      buffer.writeln('📅 *Delivery Due:* ${_formatDate(widget.customer.dueDate!)}');
+    }
+    
+    buffer.writeln('\n📏 *MEASUREMENTS*');
+    buffer.writeln('----------------------------------');
+    if (_measurement != null) {
+      buffer.writeln('• *Chest:* ${_measurement!.chest?.isNotEmpty == true ? "${_measurement!.chest} in" : "-"}');
+      buffer.writeln('• *Waist:* ${_measurement!.waist?.isNotEmpty == true ? "${_measurement!.waist} in" : "-"}');
+      buffer.writeln('• *Shoulder:* ${_measurement!.shoulder?.isNotEmpty == true ? "${_measurement!.shoulder} in" : "-"}');
+      buffer.writeln('• *Sleeve:* ${_measurement!.sleeve?.isNotEmpty == true ? "${_measurement!.sleeve} in" : "-"}');
+    } else {
+      buffer.writeln('No measurements recorded yet.');
+    }
+    buffer.writeln('----------------------------------');
+    buffer.write('Thank you for choosing Soul Fashion!');
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Customer details copied to clipboard!'),
+        backgroundColor: AppTheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.customer.name),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: _shareDetails,
+            tooltip: 'Share Details',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -142,6 +188,19 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                   ),
                 ],
               ),
+              if (widget.customer.dueDate != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.alarm_on_rounded, size: 16, color: AppTheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Delivery Due: ${_formatDate(widget.customer.dueDate!)}',
+                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

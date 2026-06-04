@@ -33,9 +33,9 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addCustomer(String name, String? phone, Uint8List? photoBytes) async {
+  Future<void> addCustomer(String name, String? phone, Uint8List? photoBytes, {DateTime? dueDate}) async {
     try {
-      final newCustomer = await _service.addCustomer(name, phone, photoBytes);
+      final newCustomer = await _service.addCustomer(name, phone, photoBytes, dueDate: dueDate);
       _customers.insert(0, newCustomer);
       notifyListeners();
     } catch (e) {
