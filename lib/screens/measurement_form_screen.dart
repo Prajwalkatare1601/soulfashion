@@ -107,6 +107,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     _thighFocusNode.dispose();
     _inseamFocusNode.dispose();
     _lengthFocusNode.dispose();
+
     super.dispose();
   }
 
@@ -125,6 +126,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
         'length': _lengthController.text.trim(),
       };
       
+      // Upsert measurements
       await _service.upsertMeasurement(widget.customerId, data);
       
       if (mounted) {
@@ -335,6 +337,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
                     ],
                   ),
           ),
+
           const SizedBox(height: 32),
           CustomButton(
             text: 'Save Measurements',

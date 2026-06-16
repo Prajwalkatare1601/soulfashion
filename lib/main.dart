@@ -23,18 +23,18 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
       ],
-      child: const TailorApp(),
+      child: const SoulCoutureApp(),
     ),
   );
 }
 
-class TailorApp extends StatelessWidget {
-  const TailorApp({Key? key}) : super(key: key);
+class SoulCoutureApp extends StatelessWidget {
+  const SoulCoutureApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tailor Measurements App',
+      title: 'Soul Couture App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: Consumer<AuthProvider>(

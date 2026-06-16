@@ -86,23 +86,22 @@ class _LoginScreenState extends State<LoginScreen> {
               // Logo/Icon
               Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: 90,
+                  height: 90,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.3),
+                        color: AppTheme.primary.withOpacity(0.2),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.auto_fix_high_rounded,
-                    color: Colors.white,
-                    size: 40,
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -120,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 12),
               Text(
                 _isSignUp 
-                  ? 'Join Soul Fashion to manage your tailoring business.' 
+                  ? 'Join Soul Couture to manage your fashion design business.' 
                   : 'Log in to access your customer data and measurements.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -187,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _isSignUp ? 'Already have an account? ' : 'New to Soul Fashion? ',
+                    _isSignUp ? 'Already have an account? ' : 'New to Soul Couture? ',
                     style: const TextStyle(color: AppTheme.textSecondary),
                   ),
                   GestureDetector(

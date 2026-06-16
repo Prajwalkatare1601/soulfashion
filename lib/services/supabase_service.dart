@@ -30,7 +30,13 @@ class SupabaseService {
     return (response as List).map((e) => Customer.fromJson(e)).toList();
   }
 
-  Future<Customer> addCustomer(String name, String? phone, Uint8List? photoBytes, {DateTime? dueDate}) async {
+  Future<Customer> addCustomer(
+    String name, 
+    String? phone, 
+    Uint8List? photoBytes, {
+    DateTime? dueDate, 
+    OrderType orderType = OrderType.stitching,
+  }) async {
     String? photoUrl;
     if (photoBytes != null) {
       final fileName = '${const Uuid().v4()}.jpg';
@@ -48,18 +54,45 @@ class SupabaseService {
         'phone': phone,
         if (photoUrl != null) 'photo_url': photoUrl,
         'order_status': OrderStatus.ordered.name,
+        'order_type': orderType.name,
         if (dueDate != null) 'due_date': dueDate.toIso8601String(),
       }).select().single();
       
       return Customer.fromJson(response);
     } catch (e) {
-      // If the due_date column does not exist yet (e.g. migration not run), fallback
-      if (dueDate != null && e.toString().contains('due_date')) {
+      final errorStr = e.toString();
+      // Handle missing database columns gracefully if the user has not run migrations yet
+      if (errorStr.contains('order_type')) {
+        try {
+          final response = await _client.from('customers').insert({
+            'name': name,
+            'phone': phone,
+            if (photoUrl != null) 'photo_url': photoUrl,
+            'order_status': OrderStatus.ordered.name,
+            if (dueDate != null) 'due_date': dueDate.toIso8601String(),
+          }).select().single();
+          return Customer.fromJson(response);
+        } catch (innerErr) {
+          if (dueDate != null && innerErr.toString().contains('due_date')) {
+            final response = await _client.from('customers').insert({
+              'name': name,
+              'phone': phone,
+              if (photoUrl != null) 'photo_url': photoUrl,
+              'order_status': OrderStatus.ordered.name,
+            }).select().single();
+            return Customer.fromJson(response);
+          }
+          rethrow;
+        }
+      }
+
+      if (dueDate != null && errorStr.contains('due_date')) {
         final response = await _client.from('customers').insert({
           'name': name,
           'phone': phone,
           if (photoUrl != null) 'photo_url': photoUrl,
           'order_status': OrderStatus.ordered.name,
+          'order_type': orderType.name,
         }).select().single();
         return Customer.fromJson(response);
       }
@@ -74,6 +107,18 @@ class SupabaseService {
   Future<void> updateOrderStatus(String customerId, OrderStatus status) async {
     await _client.from('customers').update({
       'order_status': status.name,
+    }).eq('id', customerId);
+  }
+
+  Future<void> updateOrderType(String customerId, OrderType type) async {
+    await _client.from('customers').update({
+      'order_type': type.name,
+    }).eq('id', customerId);
+  }
+
+  Future<void> updateCustomerDueDate(String customerId, DateTime? dueDate) async {
+    await _client.from('customers').update({
+      'due_date': dueDate?.toIso8601String(),
     }).eq('id', customerId);
   }
 
@@ -162,6 +207,15 @@ class SupabaseService {
     final response = await _client.from('reference_photos').insert({
       'customer_id': customerId,
       'image_url': imageUrl,
+    }).select().single();
+
+    return ReferencePhoto.fromJson(response);
+  }
+
+  Future<ReferencePhoto> addReferenceLink(String customerId, String linkUrl) async {
+    final response = await _client.from('reference_photos').insert({
+      'customer_id': customerId,
+      'image_url': linkUrl,
     }).select().single();
 
     return ReferencePhoto.fromJson(response);

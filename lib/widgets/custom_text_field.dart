@@ -6,10 +6,13 @@ class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
   final TextInputType keyboardType;
   final String? suffixText;
+  final Widget? suffixIcon;
   final IconData? prefixIcon;
   final String? Function(String?)? validator;
   final bool obscureText;
   final FocusNode? focusNode;
+  final bool readOnly;
+  final VoidCallback? onTap;
 
   const CustomTextField({
     Key? key,
@@ -17,10 +20,13 @@ class CustomTextField extends StatelessWidget {
     required this.controller,
     this.keyboardType = TextInputType.text,
     this.suffixText,
+    this.suffixIcon,
     this.prefixIcon,
     this.validator,
     this.obscureText = false,
     this.focusNode,
+    this.readOnly = false,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -42,9 +48,12 @@ class CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           validator: validator,
           focusNode: focusNode,
+          readOnly: readOnly,
+          onTap: onTap,
           style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
           decoration: InputDecoration(
             suffixText: suffixText,
+            suffixIcon: suffixIcon,
             prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: AppTheme.textSecondary, size: 20) : null,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),

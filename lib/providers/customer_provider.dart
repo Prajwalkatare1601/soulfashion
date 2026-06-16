@@ -33,14 +33,18 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addCustomer(String name, String? phone, Uint8List? photoBytes, {DateTime? dueDate}) async {
+  Future<void> addCustomer(
+    String name, 
+    String? phone, 
+    Uint8List? photoBytes, {
+    DateTime? dueDate, 
+    OrderType orderType = OrderType.stitching,
+  }) async {
     try {
-      final newCustomer = await _service.addCustomer(name, phone, photoBytes, dueDate: dueDate);
+      final newCustomer = await _service.addCustomer(name, phone, photoBytes, dueDate: dueDate, orderType: orderType);
       _customers.insert(0, newCustomer);
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
       rethrow;
     }
   }
@@ -51,8 +55,6 @@ class CustomerProvider extends ChangeNotifier {
       _customers.removeWhere((c) => c.id == id);
       notifyListeners();
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
       rethrow;
     }
   }
@@ -69,13 +71,59 @@ class CustomerProvider extends ChangeNotifier {
           phone: old.phone,
           photoUrl: old.photoUrl,
           orderStatus: status,
+          orderType: old.orderType,
           createdAt: old.createdAt,
+          dueDate: old.dueDate,
         );
         notifyListeners();
       }
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> updateOrderType(String customerId, OrderType type) async {
+    try {
+      await _service.updateOrderType(customerId, type);
+      final index = _customers.indexWhere((c) => c.id == customerId);
+      if (index != -1) {
+        final old = _customers[index];
+        _customers[index] = Customer(
+          id: old.id,
+          name: old.name,
+          phone: old.phone,
+          photoUrl: old.photoUrl,
+          orderStatus: old.orderStatus,
+          orderType: type,
+          createdAt: old.createdAt,
+          dueDate: old.dueDate,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateCustomerDueDate(String customerId, DateTime? dueDate) async {
+    try {
+      await _service.updateCustomerDueDate(customerId, dueDate);
+      final index = _customers.indexWhere((c) => c.id == customerId);
+      if (index != -1) {
+        final old = _customers[index];
+        _customers[index] = Customer(
+          id: old.id,
+          name: old.name,
+          phone: old.phone,
+          photoUrl: old.photoUrl,
+          orderStatus: old.orderStatus,
+          orderType: old.orderType,
+          createdAt: old.createdAt,
+          dueDate: dueDate,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
       rethrow;
     }
   }

@@ -5,11 +5,13 @@ CREATE TABLE customers (
   phone TEXT,
   photo_url TEXT,
   order_status TEXT DEFAULT 'ordered',
+  order_type TEXT DEFAULT 'stitching',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- If the table already exists, run this migration:
+-- If the table already exists, run these migrations:
 -- ALTER TABLE customers ADD COLUMN order_status TEXT DEFAULT 'ordered';
+-- ALTER TABLE customers ADD COLUMN order_type TEXT DEFAULT 'stitching';
 
 -- 2. Create measurements table
 CREATE TABLE measurements (
