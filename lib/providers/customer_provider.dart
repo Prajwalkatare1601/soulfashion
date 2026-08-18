@@ -15,7 +15,30 @@ class CustomerProvider extends ChangeNotifier {
   String? get error => _error;
 
   CustomerProvider() {
-    fetchCustomers();
+    _init();
+  }
+
+  void _init() {
+    // Fetch customers immediately if user is already logged in
+    if (_service.currentUser != null) {
+      fetchCustomers();
+    }
+
+    // Listen for authentication changes to fetch or clear data
+    _service.authStateChanges.listen((data) {
+      final session = data.session;
+      if (session != null) {
+        fetchCustomers();
+      } else {
+        clearCustomers();
+      }
+    });
+  }
+
+  void clearCustomers() {
+    _customers = [];
+    _error = null;
+    notifyListeners();
   }
 
   Future<void> fetchCustomers() async {

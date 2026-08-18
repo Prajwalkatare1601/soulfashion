@@ -48,13 +48,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> signUp(String email, String password, {required String boutiqueName}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _service.signUpWithEmail(email, password);
+      final response = await _service.signUpWithEmail(email, password, boutiqueName: boutiqueName);
       _user = response.user;
     } catch (e) {
       _error = e.toString();

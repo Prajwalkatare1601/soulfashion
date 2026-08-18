@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/section_card.dart';
 import '../widgets/custom_button.dart';
 import 'measurement_form_screen.dart';
+import 'measurements_view_screen.dart';
 import 'scribble_screen.dart';
 import 'fullscreen_image_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -86,6 +87,16 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
         buffer.writeln('• *Thigh:* ${_measurement!.thigh?.isNotEmpty == true ? "${_measurement!.thigh} in" : "-"}');
         buffer.writeln('• *Inseam:* ${_measurement!.inseam?.isNotEmpty == true ? "${_measurement!.inseam} in" : "-"}');
         buffer.writeln('• *Length:* ${_measurement!.length?.isNotEmpty == true ? "${_measurement!.length} in" : "-"}');
+      }
+      if (_measurement!.customValues.isNotEmpty) {
+        buffer.writeln('\n[Custom & Full Body]');
+        _measurement!.customValues.forEach((key, val) {
+          final parts = key.split('_');
+          final label = parts.length >= 2 ? parts.sublist(1).join('_') : key;
+          if (val?.toString().isNotEmpty == true) {
+            buffer.writeln('• *$label:* $val in');
+          }
+        });
       }
     } else {
       buffer.writeln('No measurements recorded yet.');
@@ -940,24 +951,23 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_isMeasurementExpanded)
-            IconButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MeasurementFormScreen(
-                      customerId: customer.id,
-                      existingMeasurement: _measurement,
-                    ),
+          IconButton(
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MeasurementsViewScreen(
+                    customerId: customer.id,
+                    customerName: customer.name,
                   ),
-                );
-                _fetchData(); // Reload after edit
-              },
-              icon: Icon(_measurement == null ? Icons.add_circle_outline_rounded : Icons.edit_outlined),
-              color: AppTheme.primary,
-              tooltip: _measurement == null ? 'Add Measurements' : 'Edit Measurements',
-            ),
+                ),
+              );
+              _fetchData(); // Reload after edit
+            },
+            icon: Icon(_measurement == null ? Icons.add_circle_outline_rounded : Icons.open_in_new_rounded),
+            color: AppTheme.primary,
+            tooltip: _measurement == null ? 'Add Measurements' : 'View Measurements',
+          ),
           IconButton(
             onPressed: () => setState(() => _isMeasurementExpanded = !_isMeasurementExpanded),
             icon: Icon(_isMeasurementExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded),
@@ -968,7 +978,18 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       ),
       child: !_isMeasurementExpanded
           ? InkWell(
-              onTap: () => setState(() => _isMeasurementExpanded = true),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MeasurementsViewScreen(
+                      customerId: customer.id,
+                      customerName: customer.name,
+                    ),
+                  ),
+                );
+                _fetchData();
+              },
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
@@ -1009,6 +1030,14 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                                     _buildMiniChip('Shoulder', _measurement!.shoulder!),
                                   if (_measurement!.sleeve?.isNotEmpty == true)
                                     _buildMiniChip('Sleeve', _measurement!.sleeve!),
+                                  if (_measurement!.customValues.isNotEmpty)
+                                    ..._measurement!.customValues.entries
+                                        .where((entry) => entry.value?.toString().isNotEmpty == true)
+                                        .map((entry) {
+                                      final parts = entry.key.split('_');
+                                      final label = parts.length >= 2 ? parts.sublist(1).join('_') : entry.key;
+                                      return _buildMiniChip(label, entry.value.toString());
+                                    }),
                                 ],
                               ),
                             ),
@@ -1036,9 +1065,9 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => MeasurementFormScreen(
+                              builder: (_) => MeasurementsViewScreen(
                                 customerId: customer.id,
-                                existingMeasurement: _measurement,
+                                customerName: customer.name,
                               ),
                             ),
                           );
@@ -1111,6 +1140,40 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                           _MeasurementCard(label: 'Inseam', value: _measurement!.inseam),
                           _MeasurementCard(label: 'Length', value: _measurement!.length),
                         ],
+                      ),
+                    ],
+                    if (_measurement!.customValues.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(color: Color(0xFFE2E8F0), height: 1),
+                      ),
+                      const Text(
+                        'Custom & Full Body',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: AppTheme.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 2.2,
+                        ),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _measurement!.customValues.length,
+                        itemBuilder: (context, idx) {
+                          final key = _measurement!.customValues.keys.elementAt(idx);
+                          final value = _measurement!.customValues[key];
+                          final parts = key.split('_');
+                          final label = parts.length >= 2 ? parts.sublist(1).join('_') : key;
+                          return _MeasurementCard(label: label, value: value?.toString());
+                        },
                       ),
                     ],
                   ],

@@ -11,6 +11,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/empty_state.dart';
 import 'customer_detail_screen.dart';
+import 'error_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -822,10 +823,64 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           
           if (provider.error != null) {
+            final errorType = AppErrorType.fromException(provider.error);
+            final isNetwork = errorType == AppErrorType.noInternet;
+            
             return EmptyState(
-              icon: Icons.error_outline,
-              title: 'Something went wrong',
-              message: provider.error!,
+              icon: isNetwork ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
+              title: isNetwork ? 'Connection Problem' : 'Failed to Load Customers',
+              message: isNetwork 
+                  ? 'We cannot reach the server. Please check your internet connection and try again.'
+                  : 'Something went wrong while retrieving your customer list. Please check your network and try again.',
+              action: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomButton(
+                        text: 'Try Again',
+                        icon: Icons.refresh_rounded,
+                        onPressed: () => provider.fetchCustomers(),
+                      ),
+                      if (!isNetwork) ...[
+                        const SizedBox(width: 12),
+                        OutlinedButton(
+                          child: const Text('Show Details'),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Technical Details'),
+                                content: SingleChildScrollView(
+                                  child: Text(
+                                    provider.error!,
+                                    style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    child: const Text('Close'),
+                                    onPressed: () => Navigator.pop(context),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                            foregroundColor: AppTheme.primary,
+                            side: const BorderSide(color: const Color(0xFFE3E8EE)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             );
           }
 

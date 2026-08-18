@@ -1,60 +1,43 @@
+-- Migration script to add boutiques support and multi-tenant RLS policies
+-- Run this in the Supabase SQL Editor on your existing database
+
+BEGIN;
+
 -- 1. Create boutiques table
-CREATE TABLE boutiques (
+CREATE TABLE IF NOT EXISTS boutiques (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 2. Create boutique_users table to map auth users to boutiques
-CREATE TABLE boutique_users (
+CREATE TABLE IF NOT EXISTS boutique_users (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   boutique_id UUID REFERENCES boutiques(id) ON DELETE CASCADE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. Create customers table (with boutique reference)
-CREATE TABLE customers (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  boutique_id UUID REFERENCES boutiques(id) ON DELETE CASCADE NOT NULL,
-  name TEXT NOT NULL,
-  phone TEXT,
-  photo_url TEXT,
-  order_status TEXT DEFAULT 'ordered',
-  order_type TEXT DEFAULT 'stitching',
-  due_date TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- 3. Add boutique_id to customers table
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS boutique_id UUID REFERENCES boutiques(id) ON DELETE CASCADE;
 
--- 4. Create measurements table
-CREATE TABLE measurements (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
-  chest TEXT,
-  waist TEXT,
-  shoulder TEXT,
-  sleeve TEXT,
-  thigh TEXT,
-  inseam TEXT,
-  length TEXT,
-  custom_values JSONB DEFAULT '{}'::jsonb,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- 4. Create a default boutique if none exists
+INSERT INTO boutiques (name)
+SELECT 'Default Boutique'
+WHERE NOT EXISTS (SELECT 1 FROM boutiques LIMIT 1);
 
--- 5. Create scribbles table
-CREATE TABLE scribbles (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
-  image_url TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- 5. Assign all existing customers to the default boutique
+UPDATE customers
+SET boutique_id = (SELECT id FROM boutiques ORDER BY created_at LIMIT 1)
+WHERE boutique_id IS NULL;
 
--- 6. Create reference_photos table
-CREATE TABLE reference_photos (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
-  image_url TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- Make boutique_id NOT NULL after backfilling
+ALTER TABLE customers ALTER COLUMN boutique_id SET NOT NULL;
+
+-- 6. Assign all existing logged-in users to the default boutique so they retain access
+INSERT INTO boutique_users (user_id, boutique_id)
+SELECT id, (SELECT id FROM boutiques ORDER BY created_at LIMIT 1)
+FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
 
 -- 7. Enable Row Level Security (RLS) on all tables
 ALTER TABLE boutiques ENABLE ROW LEVEL SECURITY;
@@ -64,7 +47,17 @@ ALTER TABLE measurements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scribbles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reference_photos ENABLE ROW LEVEL SECURITY;
 
--- 8. Create RLS Policies
+-- 8. Drop any existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Users can manage their own boutique user assignment" ON boutique_users;
+DROP POLICY IF EXISTS "Users can view their boutique" ON boutiques;
+DROP POLICY IF EXISTS "Users can update their boutique" ON boutiques;
+DROP POLICY IF EXISTS "Users can create a boutique" ON boutiques;
+DROP POLICY IF EXISTS "Users can manage customers in their boutique" ON customers;
+DROP POLICY IF EXISTS "Users can manage measurements for customers in their boutique" ON measurements;
+DROP POLICY IF EXISTS "Users can manage scribbles for customers in their boutique" ON scribbles;
+DROP POLICY IF EXISTS "Users can manage reference photos for customers in their boutique" ON reference_photos;
+
+-- 9. Create RLS Policies
 
 -- Boutique Users policies
 CREATE POLICY "Users can manage their own boutique user assignment" 
@@ -216,7 +209,7 @@ WITH CHECK (
   )
 );
 
--- 9. Database Triggers for Multi-Tenant automation
+-- 10. Database Triggers for Multi-Tenant automation
 
 -- Trigger for automatically assigning new users to their new boutique based on signup metadata
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -241,7 +234,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create signup trigger
+-- Recreate signup trigger
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -269,20 +262,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create customer insert trigger
+-- Recreate customer insert trigger
 DROP TRIGGER IF EXISTS on_customer_insert ON public.customers;
 CREATE TRIGGER on_customer_insert
   BEFORE INSERT ON public.customers
   FOR EACH ROW EXECUTE FUNCTION public.set_customer_boutique_id();
 
-
--- 10. Storage Setup
-INSERT INTO storage.buckets (id, name, public) VALUES ('customer_photos', 'customer_photos', true) ON CONFLICT DO NOTHING;
-INSERT INTO storage.buckets (id, name, public) VALUES ('scribbles', 'scribbles', true) ON CONFLICT DO NOTHING;
-INSERT INTO storage.buckets (id, name, public) VALUES ('reference_photos', 'reference_photos', true) ON CONFLICT DO NOTHING;
-
--- Storage Policies (Allow anyone to read, but only authenticated users to upload/delete)
-CREATE POLICY "Public Read Access" ON storage.objects FOR SELECT USING (true);
-CREATE POLICY "Authenticated Insert" ON storage.objects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Authenticated Update" ON storage.objects FOR UPDATE WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Authenticated Delete" ON storage.objects FOR DELETE USING (auth.role() = 'authenticated');
+COMMIT;

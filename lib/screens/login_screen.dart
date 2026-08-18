@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
+import 'error_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -16,6 +16,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _boutiqueNameController = TextEditingController();
   bool _isSignUp = false;
   bool _isLoading = false;
   String? _errorMessage;
@@ -24,15 +25,22 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _boutiqueNameController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSubmit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final boutiqueName = _boutiqueNameController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Please enter email and password');
+      return;
+    }
+
+    if (_isSignUp && boutiqueName.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your boutique name');
       return;
     }
 
@@ -44,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (_isSignUp) {
-        await authProvider.signUp(email, password);
+        await authProvider.signUp(email, password, boutiqueName: boutiqueName);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -56,15 +64,13 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await authProvider.signIn(email, password);
       }
-    } on AuthException catch (e) {
-      print('Auth error: ${e.message}');
-      if (mounted) {
-        setState(() => _errorMessage = e.message);
-      }
     } catch (e) {
-      print('General error: $e');
       if (mounted) {
-        setState(() => _errorMessage = 'An unexpected error occurred: ${e.toString()}');
+        ErrorScreen.show(
+          context,
+          exception: e,
+          onRetry: _handleSubmit,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -141,6 +147,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 prefixIcon: Icons.lock_outline_rounded,
               ),
+              if (_isSignUp) ...[
+                const SizedBox(height: 20),
+                CustomTextField(
+                  label: 'Boutique Name',
+                  controller: _boutiqueNameController,
+                  prefixIcon: Icons.storefront_outlined,
+                ),
+              ],
               const SizedBox(height: 40),
               // Error Message
               Consumer<AuthProvider>(

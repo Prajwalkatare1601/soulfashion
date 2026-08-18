@@ -16,8 +16,12 @@ class SupabaseService {
     return await _client.auth.signInWithPassword(email: email, password: password);
   }
 
-  Future<AuthResponse> signUpWithEmail(String email, String password) async {
-    return await _client.auth.signUp(email: email, password: password);
+  Future<AuthResponse> signUpWithEmail(String email, String password, {String? boutiqueName}) async {
+    return await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: boutiqueName != null ? {'boutique_name': boutiqueName} : null,
+    );
   }
 
   Future<void> signOut() async {
@@ -145,6 +149,38 @@ class SupabaseService {
       }
     } catch (e) {
       final errorStr = e.toString().toLowerCase();
+      
+      if (errorStr.contains('custom_values') || errorStr.contains('custom')) {
+        final fallbackData = Map<String, dynamic>.from(data)..remove('custom_values');
+        try {
+          if (existing != null) {
+            await _client.from('measurements').update(fallbackData).eq('id', existing.id);
+          } else {
+            await _client.from('measurements').insert(fallbackData);
+          }
+        } catch (innerErr) {
+          final innerErrorStr = innerErr.toString().toLowerCase();
+          if (innerErrorStr.contains('thigh') || innerErrorStr.contains('inseam') || innerErrorStr.contains('length')) {
+            final doubleFallback = {
+              'customer_id': customerId,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+              if (data['chest'] != null) 'chest': data['chest'],
+              if (data['waist'] != null) 'waist': data['waist'],
+              if (data['shoulder'] != null) 'shoulder': data['shoulder'],
+              if (data['sleeve'] != null) 'sleeve': data['sleeve'],
+            };
+            if (existing != null) {
+              await _client.from('measurements').update(doubleFallback).eq('id', existing.id);
+            } else {
+              await _client.from('measurements').insert(doubleFallback);
+            }
+          } else {
+            rethrow;
+          }
+        }
+        throw Exception('Standard measurements saved! Note: Run database migration to save Custom/Full Body Measurements: ALTER TABLE measurements ADD COLUMN IF NOT EXISTS custom_values JSONB;');
+      }
+      
       if (errorStr.contains('thigh') || errorStr.contains('inseam') || errorStr.contains('length')) {
         // Fallback data containing only original upper body fields
         final fallbackData = {

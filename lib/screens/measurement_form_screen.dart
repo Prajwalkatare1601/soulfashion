@@ -3,8 +3,17 @@ import '../models/models.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
-import '../widgets/custom_text_field.dart';
 import '../widgets/section_card.dart';
+
+enum BodyTab { upper, bottom, full }
+
+class CustomField {
+  final String key;
+  final String label;
+  final String tab;
+
+  CustomField({required this.key, required this.label, required this.tab});
+}
 
 class MeasurementFormScreen extends StatefulWidget {
   final String customerId;
@@ -22,91 +31,182 @@ class MeasurementFormScreen extends StatefulWidget {
 
 class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Upper body controllers & focus nodes
-  final _chestController = TextEditingController();
-  final _waistController = TextEditingController();
-  final _shoulderController = TextEditingController();
-  final _sleeveController = TextEditingController();
-
-  final _chestFocusNode = FocusNode();
-  final _waistFocusNode = FocusNode();
-  final _shoulderFocusNode = FocusNode();
-  final _sleeveFocusNode = FocusNode();
-
-  // Bottom body controllers & focus nodes
-  final _thighController = TextEditingController();
-  final _inseamController = TextEditingController();
-  final _lengthController = TextEditingController();
-
-  final _thighFocusNode = FocusNode();
-  final _inseamFocusNode = FocusNode();
-  final _lengthFocusNode = FocusNode();
-
-  bool _isUpperBody = true;
-  String? _activeField;
   final _service = SupabaseService();
   bool _isSaving = false;
+  BodyTab _activeTab = BodyTab.upper;
+
+  // Upper body controllers
+  final _upperLengthController = TextEditingController();
+  final _chestController = TextEditingController();
+  final _upperChestController = TextEditingController();
+  final _pointController = TextEditingController();
+  final _upperWaistController = TextEditingController();
+  final _sleeveController = TextEditingController();
+  final _shoulderController = TextEditingController();
+  final _slitController = TextEditingController();
+  final _upperHipController = TextEditingController();
+  final _lowerHipController = TextEditingController();
+  final _frontNeckController = TextEditingController();
+  final _backNeckController = TextEditingController();
+  final _backBoardController = TextEditingController();
+  final _armController = TextEditingController();
+  final _sideController = TextEditingController();
+
+  final _upperLengthFocusNode = FocusNode();
+  final _chestFocusNode = FocusNode();
+  final _upperChestFocusNode = FocusNode();
+  final _pointFocusNode = FocusNode();
+  final _upperWaistFocusNode = FocusNode();
+  final _sleeveFocusNode = FocusNode();
+  final _shoulderFocusNode = FocusNode();
+  final _slitFocusNode = FocusNode();
+  final _upperHipFocusNode = FocusNode();
+  final _lowerHipFocusNode = FocusNode();
+  final _frontNeckFocusNode = FocusNode();
+  final _backNeckFocusNode = FocusNode();
+  final _backBoardFocusNode = FocusNode();
+  final _armFocusNode = FocusNode();
+  final _sideFocusNode = FocusNode();
+
+  // Bottom body controllers
+  final _lowerLengthController = TextEditingController();
+  final _lowerWaistController = TextEditingController();
+  final _bottomHipController = TextEditingController();
+  final _thighController = TextEditingController();
+  final _kneeController = TextEditingController();
+  final _crotchController = TextEditingController();
+  final _bottomController = TextEditingController();
+
+  final _lowerLengthFocusNode = FocusNode();
+  final _lowerWaistFocusNode = FocusNode();
+  final _bottomHipFocusNode = FocusNode();
+  final _thighFocusNode = FocusNode();
+  final _kneeFocusNode = FocusNode();
+  final _crotchFocusNode = FocusNode();
+  final _bottomFocusNode = FocusNode();
+
+  // Full body controllers
+  final _fullLengthController = TextEditingController();
+  final _yokeController = TextEditingController();
+
+  final _fullLengthFocusNode = FocusNode();
+  final _yokeFocusNode = FocusNode();
+
+  final List<CustomField> _customFields = [];
+  final Map<String, TextEditingController> _customControllers = {};
+  final Map<String, FocusNode> _customFocusNodes = {};
 
   @override
   void initState() {
     super.initState();
     if (widget.existingMeasurement != null) {
-      _chestController.text = widget.existingMeasurement!.chest ?? '';
-      _waistController.text = widget.existingMeasurement!.waist ?? '';
-      _shoulderController.text = widget.existingMeasurement!.shoulder ?? '';
-      _sleeveController.text = widget.existingMeasurement!.sleeve ?? '';
-      
-      _thighController.text = widget.existingMeasurement!.thigh ?? '';
-      _inseamController.text = widget.existingMeasurement!.inseam ?? '';
-      _lengthController.text = widget.existingMeasurement!.length ?? '';
+      final m = widget.existingMeasurement!;
+      // Upper body
+      _upperLengthController.text = m.upperLength ?? '';
+      _chestController.text = m.chest ?? '';
+      _upperChestController.text = m.upperChest ?? '';
+      _pointController.text = m.point ?? '';
+      _upperWaistController.text = m.upperWaist ?? m.waist ?? '';
+      _sleeveController.text = m.sleeve ?? '';
+      _shoulderController.text = m.shoulder ?? '';
+      _slitController.text = m.slit ?? '';
+      _upperHipController.text = m.upperHip ?? '';
+      _lowerHipController.text = m.lowerHip ?? '';
+      _frontNeckController.text = m.frontNeck ?? '';
+      _backNeckController.text = m.backNeck ?? '';
+      _backBoardController.text = m.backBoard ?? '';
+      _armController.text = m.arm ?? '';
+      _sideController.text = m.side ?? '';
+
+      // Bottom body
+      _lowerLengthController.text = m.lowerLength ?? m.length ?? '';
+      _lowerWaistController.text = m.lowerWaist ?? '';
+      _bottomHipController.text = m.bottomHip ?? '';
+      _thighController.text = m.thigh ?? '';
+      _kneeController.text = m.knee ?? '';
+      _crotchController.text = m.crotch ?? '';
+      _bottomController.text = m.bottom ?? '';
+
+      // Full body
+      _fullLengthController.text = m.fullLength ?? '';
+      _yokeController.text = m.yoke ?? '';
+
+      // Custom values
+      if (m.customValues.isNotEmpty) {
+        m.customValues.forEach((key, value) {
+          final parts = key.split('_');
+          if (parts.length >= 2) {
+            final tab = parts[0];
+            final label = parts.sublist(1).join('_');
+
+            final field = CustomField(key: key, label: label, tab: tab);
+            _customFields.add(field);
+            _customControllers[key] = TextEditingController(text: value.toString());
+            _customFocusNodes[key] = FocusNode();
+          }
+        });
+      }
     }
-
-    // Upper body focus listeners
-    _chestFocusNode.addListener(() {
-      if (_chestFocusNode.hasFocus) setState(() => _activeField = 'chest');
-    });
-    _waistFocusNode.addListener(() {
-      if (_waistFocusNode.hasFocus) setState(() => _activeField = 'waist');
-    });
-    _shoulderFocusNode.addListener(() {
-      if (_shoulderFocusNode.hasFocus) setState(() => _activeField = 'shoulder');
-    });
-    _sleeveFocusNode.addListener(() {
-      if (_sleeveFocusNode.hasFocus) setState(() => _activeField = 'sleeve');
-    });
-
-    // Bottom body focus listeners
-    _thighFocusNode.addListener(() {
-      if (_thighFocusNode.hasFocus) setState(() => _activeField = 'thigh');
-    });
-    _inseamFocusNode.addListener(() {
-      if (_inseamFocusNode.hasFocus) setState(() => _activeField = 'inseam');
-    });
-    _lengthFocusNode.addListener(() {
-      if (_lengthFocusNode.hasFocus) setState(() => _activeField = 'length');
-    });
   }
 
   @override
   void dispose() {
+    _upperLengthController.dispose();
     _chestController.dispose();
-    _waistController.dispose();
-    _shoulderController.dispose();
+    _upperChestController.dispose();
+    _pointController.dispose();
+    _upperWaistController.dispose();
     _sleeveController.dispose();
+    _shoulderController.dispose();
+    _slitController.dispose();
+    _upperHipController.dispose();
+    _lowerHipController.dispose();
+    _frontNeckController.dispose();
+    _backNeckController.dispose();
+    _backBoardController.dispose();
+    _armController.dispose();
+    _sideController.dispose();
 
+    _upperLengthFocusNode.dispose();
     _chestFocusNode.dispose();
-    _waistFocusNode.dispose();
-    _shoulderFocusNode.dispose();
+    _upperChestFocusNode.dispose();
+    _pointFocusNode.dispose();
+    _upperWaistFocusNode.dispose();
     _sleeveFocusNode.dispose();
+    _shoulderFocusNode.dispose();
+    _slitFocusNode.dispose();
+    _upperHipFocusNode.dispose();
+    _lowerHipFocusNode.dispose();
+    _frontNeckFocusNode.dispose();
+    _backNeckFocusNode.dispose();
+    _backBoardFocusNode.dispose();
+    _armFocusNode.dispose();
+    _sideFocusNode.dispose();
 
+    _lowerLengthController.dispose();
+    _lowerWaistController.dispose();
+    _bottomHipController.dispose();
     _thighController.dispose();
-    _inseamController.dispose();
-    _lengthController.dispose();
+    _kneeController.dispose();
+    _crotchController.dispose();
+    _bottomController.dispose();
 
+    _lowerLengthFocusNode.dispose();
+    _lowerWaistFocusNode.dispose();
+    _bottomHipFocusNode.dispose();
     _thighFocusNode.dispose();
-    _inseamFocusNode.dispose();
-    _lengthFocusNode.dispose();
+    _kneeFocusNode.dispose();
+    _crotchFocusNode.dispose();
+    _bottomFocusNode.dispose();
+
+    _fullLengthController.dispose();
+    _yokeController.dispose();
+
+    _fullLengthFocusNode.dispose();
+    _yokeFocusNode.dispose();
+
+    _customControllers.forEach((_, c) => c.dispose());
+    _customFocusNodes.forEach((_, f) => f.dispose());
 
     super.dispose();
   }
@@ -116,19 +216,56 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
 
     setState(() => _isSaving = true);
     try {
+      final customValuesMap = <String, String>{};
+      for (final field in _customFields) {
+        final val = _customControllers[field.key]!.text.trim();
+        if (val.isNotEmpty) {
+          customValuesMap[field.key] = val;
+        }
+      }
+
       final data = {
+        // Upper body
+        'upper_length': _upperLengthController.text.trim(),
         'chest': _chestController.text.trim(),
-        'waist': _waistController.text.trim(),
-        'shoulder': _shoulderController.text.trim(),
+        'upper_chest': _upperChestController.text.trim(),
+        'point': _pointController.text.trim(),
+        'upper_waist': _upperWaistController.text.trim(),
         'sleeve': _sleeveController.text.trim(),
+        'shoulder': _shoulderController.text.trim(),
+        'slit': _slitController.text.trim(),
+        'upper_hip': _upperHipController.text.trim(),
+        'lower_hip': _lowerHipController.text.trim(),
+        'front_neck': _frontNeckController.text.trim(),
+        'back_neck': _backNeckController.text.trim(),
+        'back_board': _backBoardController.text.trim(),
+        'arm': _armController.text.trim(),
+        'side': _sideController.text.trim(),
+
+        // Bottom body
+        'lower_length': _lowerLengthController.text.trim(),
+        'lower_waist': _lowerWaistController.text.trim(),
+        'bottom_hip': _bottomHipController.text.trim(),
         'thigh': _thighController.text.trim(),
-        'inseam': _inseamController.text.trim(),
-        'length': _lengthController.text.trim(),
+        'knee': _kneeController.text.trim(),
+        'crotch': _crotchController.text.trim(),
+        'bottom': _bottomController.text.trim(),
+
+        // Full body
+        'full_length': _fullLengthController.text.trim(),
+        'yoke': _yokeController.text.trim(),
+
+        // Legacy values for compatibility
+        'waist': _upperWaistController.text.trim(),
+        'length': _upperLengthController.text.trim().isNotEmpty
+            ? _upperLengthController.text.trim()
+            : _lowerLengthController.text.trim(),
+
+        'custom_values': customValuesMap,
       };
-      
-      // Upsert measurements
+
       await _service.upsertMeasurement(widget.customerId, data);
-      
+
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Measurements saved successfully')));
@@ -142,9 +279,7 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
           action: SnackBarAction(
             label: 'OK',
             textColor: Colors.white,
-            onPressed: () {
-              if (mounted) Navigator.pop(context);
-            },
+            onPressed: () {},
           ),
         ));
       }
@@ -155,50 +290,143 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
     }
   }
 
-  void _handleSilhouetteTap(Offset localPosition, Size size) {
-    final x = localPosition.dx / size.width;
-    final y = localPosition.dy / size.height;
+  Widget _buildCustomFields(String tabStr) {
+    final fields = _customFields.where((f) => f.tab == tabStr).toList();
+    if (fields.isEmpty) return const SizedBox.shrink();
 
-    if (_isUpperBody) {
-      // Map canvas upper zones to focus nodes
-      if (y >= 0.22 && y <= 0.36) {
-        _shoulderFocusNode.requestFocus();
-      } else if (y > 0.36 && y <= 0.52) {
-        if (x < 0.33 || x > 0.67) {
-          _sleeveFocusNode.requestFocus();
-        } else {
-          _chestFocusNode.requestFocus();
-        }
-      } else if (y > 0.52 && y <= 0.72) {
-        if (x < 0.35 || x > 0.65) {
-          _sleeveFocusNode.requestFocus();
-        } else {
-          _waistFocusNode.requestFocus();
-        }
-      }
-    } else {
-      // Map canvas lower zones to focus nodes
-      if (y > 0.32 && y <= 0.52) {
-        _thighFocusNode.requestFocus();
-      } else if (y > 0.52 && y <= 0.88) {
-        if (x >= 0.55) {
-          _lengthFocusNode.requestFocus();
-        } else {
-          _inseamFocusNode.requestFocus();
-        }
-      }
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+        const Divider(color: Color(0xFFF1F5F9), height: 24),
+        ...fields.map((field) => _buildCustomFieldRow(field)),
+      ],
+    );
+  }
+
+  Widget _buildCustomFieldRow(CustomField field) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              field.label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 140,
+                child: TextFormField(
+                  controller: _customControllers[field.key]!,
+                  focusNode: _customFocusNodes[field.key]!,
+                  keyboardType: TextInputType.text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    suffixText: 'in',
+                    suffixStyle: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    fillColor: Colors.white,
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                onPressed: () {
+                  setState(() {
+                    _customFields.remove(field);
+                    _customControllers.remove(field.key)?.dispose();
+                    _customFocusNodes.remove(field.key)?.dispose();
+                  });
+                },
+                tooltip: 'Remove field',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddCustomFieldDialog() {
+    final nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Custom Measurement'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Measurement Name',
+            hintText: 'e.g., Arm Hole, Wrist, Ankle',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isNotEmpty) {
+                final tabStr = _activeTab.name;
+                final key = '${tabStr}_$name';
+
+                if (!_customControllers.containsKey(key)) {
+                  setState(() {
+                    final newField = CustomField(key: key, label: name, tab: tabStr);
+                    _customFields.add(newField);
+                    _customControllers[key] = TextEditingController();
+                    _customFocusNodes[key] = FocusNode();
+                  });
+                }
+              }
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+            child: const Text('Add', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth > 700;
-
     Widget toggleBar = Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.06),
+        color: AppTheme.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -206,21 +434,20 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() {
-                _isUpperBody = true;
-                _activeField = null;
+                _activeTab = BodyTab.upper;
               }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _isUpperBody ? AppTheme.primary : Colors.transparent,
+                  color: _activeTab == BodyTab.upper ? AppTheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
                     'Upper Body',
                     style: TextStyle(
-                      color: _isUpperBody ? Colors.white : AppTheme.textSecondary,
+                      color: _activeTab == BodyTab.upper ? Colors.white : AppTheme.textSecondary,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -232,21 +459,45 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() {
-                _isUpperBody = false;
-                _activeField = null;
+                _activeTab = BodyTab.bottom;
               }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: !_isUpperBody ? AppTheme.primary : Colors.transparent,
+                  color: _activeTab == BodyTab.bottom ? AppTheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Text(
                     'Bottom Body',
                     style: TextStyle(
-                      color: !_isUpperBody ? Colors.white : AppTheme.textSecondary,
+                      color: _activeTab == BodyTab.bottom ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() {
+                _activeTab = BodyTab.full;
+              }),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _activeTab == BodyTab.full ? AppTheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    'Full Body',
+                    style: TextStyle(
+                      color: _activeTab == BodyTab.full ? Colors.white : AppTheme.textSecondary,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -259,83 +510,64 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
       ),
     );
 
-    Widget silhouetteWidget = LayoutBuilder(
-      builder: (context, constraints) {
-        final double canvasWidth = constraints.maxWidth;
-        final double canvasHeight = constraints.maxHeight;
-        
-        return GestureDetector(
-          onTapUp: (details) {
-            _handleSilhouetteTap(details.localPosition, Size(canvasWidth, canvasHeight));
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: CustomPaint(
-              size: Size(canvasWidth, canvasHeight),
-              painter: MannequinPainter(
-                activeField: _activeField, 
-                isUpperBody: _isUpperBody,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
     Widget formInputs = Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SectionCard(
-            title: _isUpperBody ? 'Upper Body Details' : 'Bottom Body Details',
-            child: _isUpperBody
-                ? Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField('Chest', _chestController, _chestFocusNode)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildField('Waist', _waistController, _waistFocusNode)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField('Shoulder', _shoulderController, _shoulderFocusNode)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildField('Sleeve', _sleeveController, _sleeveFocusNode)),
-                        ],
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField('Thigh', _thighController, _thighFocusNode)),
-                          const SizedBox(width: 16),
-                          Expanded(child: _buildField('Inseam', _inseamController, _inseamFocusNode)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildField('Length', _lengthController, _lengthFocusNode)),
-                          const SizedBox(width: 16),
-                          const Spacer(),
-                        ],
-                      ),
-                    ],
+            title: _activeTab == BodyTab.upper
+                ? 'Upper Body Details'
+                : _activeTab == BodyTab.bottom
+                    ? 'Bottom Body Details'
+                    : 'Full Body Details',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_activeTab == BodyTab.upper) ...[
+                  _buildField('Length', _upperLengthController, _upperLengthFocusNode),
+                  _buildField('Chest', _chestController, _chestFocusNode),
+                  _buildField('Upper chest', _upperChestController, _upperChestFocusNode),
+                  _buildField('Point', _pointController, _pointFocusNode),
+                  _buildField('Waist', _upperWaistController, _upperWaistFocusNode),
+                  _buildField('Sleeve', _sleeveController, _sleeveFocusNode),
+                  _buildField('Shoulder', _shoulderController, _shoulderFocusNode),
+                  _buildField('Slit', _slitController, _slitFocusNode),
+                  _buildField('Hip', _upperHipController, _upperHipFocusNode),
+                  _buildField('Lower hip', _lowerHipController, _lowerHipFocusNode),
+                  _buildField('Front neck', _frontNeckController, _frontNeckFocusNode),
+                  _buildField('Back neck', _backNeckController, _backNeckFocusNode),
+                  _buildField('Back board', _backBoardController, _backBoardFocusNode),
+                  _buildField('Arm', _armController, _armFocusNode),
+                  _buildField('Side', _sideController, _sideFocusNode),
+                ] else if (_activeTab == BodyTab.bottom) ...[
+                  _buildField('Length', _lowerLengthController, _lowerLengthFocusNode),
+                  _buildField('Waist', _lowerWaistController, _lowerWaistFocusNode),
+                  _buildField('Hip', _bottomHipController, _bottomHipFocusNode),
+                  _buildField('Tigh', _thighController, _thighFocusNode),
+                  _buildField('Knee', _kneeController, _kneeFocusNode),
+                  _buildField('Crotch', _crotchController, _crotchFocusNode),
+                  _buildField('Buttom', _bottomController, _bottomFocusNode),
+                ] else if (_activeTab == BodyTab.full) ...[
+                  _buildField('Length', _fullLengthController, _fullLengthFocusNode),
+                  _buildField('Yoke', _yokeController, _yokeFocusNode),
+                ],
+
+                _buildCustomFields(_activeTab.name),
+
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _showAddCustomFieldDialog,
+                  icon: const Icon(Icons.add, size: 18, color: AppTheme.primary),
+                  label: const Text('Add Custom Field', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -363,238 +595,86 @@ class _MeasurementFormScreenState extends State<MeasurementFormScreen> {
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Center(
                 child: SizedBox(
-                  width: 20, 
-                  height: 20, 
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary))
                 ),
               ),
             )
         ],
       ),
-      body: isWide
-          ? Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        toggleBar,
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: silhouetteWidget,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 32),
-                  Expanded(
-                    flex: 5,
-                    child: SingleChildScrollView(child: formInputs),
-                  ),
-                ],
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  toggleBar,
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 300,
-                    child: silhouetteWidget,
-                  ),
-                  const SizedBox(height: 24),
-                  formInputs,
-                ],
-              ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                toggleBar,
+                const SizedBox(height: 24),
+                formInputs,
+              ],
             ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildField(String label, TextEditingController controller, FocusNode focusNode) {
-    return CustomTextField(
-      label: label,
-      controller: controller,
-      focusNode: focusNode,
-      suffixText: 'in',
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 140,
+            child: TextFormField(
+              controller: controller,
+              focusNode: focusNode,
+              keyboardType: TextInputType.text,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                suffixText: 'in',
+                suffixStyle: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                fillColor: Colors.white,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-  }
-}
-
-class MannequinPainter extends CustomPainter {
-  final String? activeField;
-  final bool isUpperBody;
-
-  MannequinPainter({this.activeField, this.isUpperBody = true});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    final paintBase = Paint()
-      ..color = AppTheme.primary.withOpacity(0.04)
-      ..style = PaintingStyle.fill;
-
-    final paintBaseOutline = Paint()
-      ..color = AppTheme.primary.withOpacity(0.12)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-
-    final paintActiveGuide = Paint()
-      ..color = const Color(0xFF10B981) // Emerald Teal
-      ..strokeWidth = 3.0
-      ..style = PaintingStyle.stroke;
-
-    final paintInactiveGuide = Paint()
-      ..color = AppTheme.primary.withOpacity(0.3)
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
-
-    final paintActiveDot = Paint()
-      ..color = const Color(0xFF10B981) // Emerald Teal
-      ..style = PaintingStyle.fill;
-
-    final paintInactiveDot = Paint()
-      ..color = AppTheme.primary.withOpacity(0.5)
-      ..style = PaintingStyle.fill;
-
-    if (isUpperBody) {
-      // Draw Upper Body Mannequin
-      // Head
-      final headCenter = Offset(w * 0.5, h * 0.15);
-      final headRadius = h * 0.055;
-      canvas.drawCircle(headCenter, headRadius, paintBase);
-      canvas.drawCircle(headCenter, headRadius, paintBaseOutline);
-
-      // Neck
-      final neckPath = Path()
-        ..moveTo(w * 0.47, h * 0.20)
-        ..lineTo(w * 0.47, h * 0.24)
-        ..lineTo(w * 0.53, h * 0.24)
-        ..lineTo(w * 0.53, h * 0.20)
-        ..close();
-      canvas.drawPath(neckPath, paintBase);
-      canvas.drawPath(neckPath, paintBaseOutline);
-
-      // Torso
-      final torsoPath = Path()
-        ..moveTo(w * 0.32, h * 0.25)
-        ..quadraticBezierTo(w * 0.5, h * 0.27, w * 0.68, h * 0.25)
-        ..quadraticBezierTo(w * 0.68, h * 0.32, w * 0.65, h * 0.45)
-        ..lineTo(w * 0.61, h * 0.70)
-        ..lineTo(w * 0.39, h * 0.70)
-        ..lineTo(w * 0.35, h * 0.45)
-        ..quadraticBezierTo(w * 0.32, h * 0.32, w * 0.32, h * 0.25)
-        ..close();
-      
-      canvas.drawPath(torsoPath, paintBase);
-      canvas.drawPath(torsoPath, paintBaseOutline);
-
-      // Left arm stub
-      final leftArmPath = Path()
-        ..moveTo(w * 0.32, h * 0.25)
-        ..lineTo(w * 0.26, h * 0.55)
-        ..lineTo(w * 0.31, h * 0.55)
-        ..lineTo(w * 0.35, h * 0.35)
-        ..close();
-      canvas.drawPath(leftArmPath, paintBase);
-      canvas.drawPath(leftArmPath, paintBaseOutline);
-
-      // Right arm stub
-      final rightArmPath = Path()
-        ..moveTo(w * 0.68, h * 0.25)
-        ..lineTo(w * 0.74, h * 0.55)
-        ..lineTo(w * 0.69, h * 0.55)
-        ..lineTo(w * 0.65, h * 0.35)
-        ..close();
-      canvas.drawPath(rightArmPath, paintBase);
-      canvas.drawPath(rightArmPath, paintBaseOutline);
-
-      // Draw Upper Body Guides
-      // 1. Shoulder Guide
-      final shoulderStart = Offset(w * 0.32, h * 0.25);
-      final shoulderEnd = Offset(w * 0.68, h * 0.25);
-      final isShoulderActive = activeField == 'shoulder';
-      canvas.drawLine(shoulderStart, shoulderEnd, isShoulderActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(shoulderStart, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(shoulderEnd, isShoulderActive ? 5 : 3.5, isShoulderActive ? paintActiveDot : paintInactiveDot);
-
-      // 2. Chest Guide
-      final chestStart = Offset(w * 0.34, h * 0.43);
-      final chestEnd = Offset(w * 0.66, h * 0.43);
-      final isChestActive = activeField == 'chest';
-      canvas.drawLine(chestStart, chestEnd, isChestActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(chestStart, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(chestEnd, isChestActive ? 5 : 3.5, isChestActive ? paintActiveDot : paintInactiveDot);
-
-      // 3. Waist Guide
-      final waistStart = Offset(w * 0.39, h * 0.70);
-      final waistEnd = Offset(w * 0.61, h * 0.70);
-      final isWaistActive = activeField == 'waist';
-      canvas.drawLine(waistStart, waistEnd, isWaistActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(waistStart, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(waistEnd, isWaistActive ? 5 : 3.5, isWaistActive ? paintActiveDot : paintInactiveDot);
-
-      // 4. Sleeve Guide
-      final sleeveStart = Offset(w * 0.68, h * 0.25);
-      final sleeveEnd = Offset(w * 0.74, h * 0.55);
-      final isSleeveActive = activeField == 'sleeve';
-      canvas.drawLine(sleeveStart, sleeveEnd, isSleeveActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(sleeveStart, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(sleeveEnd, isSleeveActive ? 5 : 3.5, isSleeveActive ? paintActiveDot : paintInactiveDot);
-    } else {
-      // Draw Bottom Body Mannequin (Waist, Hips, Legs)
-      final bottomPath = Path()
-        ..moveTo(w * 0.39, h * 0.12)
-        ..lineTo(w * 0.61, h * 0.12) // waist top
-        ..quadraticBezierTo(w * 0.67, h * 0.18, w * 0.67, h * 0.28) // right hip
-        ..lineTo(w * 0.64, h * 0.85) // right outer leg
-        ..lineTo(w * 0.56, h * 0.85) // right cuff
-        ..lineTo(w * 0.5, h * 0.35) // right inner leg to crotch
-        ..lineTo(w * 0.44, h * 0.85) // left inner leg from crotch
-        ..lineTo(w * 0.36, h * 0.85) // left cuff
-        ..lineTo(w * 0.33, h * 0.28) // left outer leg
-        ..quadraticBezierTo(w * 0.33, h * 0.18, w * 0.39, h * 0.12) // left hip
-        ..close();
-      canvas.drawPath(bottomPath, paintBase);
-      canvas.drawPath(bottomPath, paintBaseOutline);
-
-      // Draw Bottom Body Guides
-      // 1. Thigh Guide
-      final thighStart = Offset(w * 0.51, h * 0.45);
-      final thighEnd = Offset(w * 0.66, h * 0.45);
-      final isThighActive = activeField == 'thigh';
-      canvas.drawLine(thighStart, thighEnd, isThighActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(thighStart, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(thighEnd, isThighActive ? 5 : 3.5, isThighActive ? paintActiveDot : paintInactiveDot);
-
-      // 2. Inseam Guide
-      final inseamStart = Offset(w * 0.50, h * 0.35);
-      final inseamEnd = Offset(w * 0.56, h * 0.85);
-      final isInseamActive = activeField == 'inseam';
-      canvas.drawLine(inseamStart, inseamEnd, isInseamActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(inseamStart, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(inseamEnd, isInseamActive ? 5 : 3.5, isInseamActive ? paintActiveDot : paintInactiveDot);
-
-      // 3. Length Guide
-      final lengthStart = Offset(w * 0.61, h * 0.12);
-      final lengthEnd = Offset(w * 0.64, h * 0.85);
-      final isLengthActive = activeField == 'length';
-      canvas.drawLine(lengthStart, lengthEnd, isLengthActive ? paintActiveGuide : paintInactiveGuide);
-      canvas.drawCircle(lengthStart, isLengthActive ? 5 : 3.5, isLengthActive ? paintActiveDot : paintInactiveDot);
-      canvas.drawCircle(lengthEnd, isLengthActive ? 5 : 3.5, isLengthActive ? paintActiveDot : paintInactiveDot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant MannequinPainter oldDelegate) {
-    return oldDelegate.activeField != activeField || oldDelegate.isUpperBody != isUpperBody;
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,6 +11,8 @@ import 'package:printing/printing.dart';
 import '../providers/customer_provider.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../models/models.dart';
+import 'measurement_form_screen.dart';
 
 enum PaperType { blank, dots, grid, lines }
 enum MannequinType { none, male, female, boy, girl }
@@ -43,6 +46,24 @@ class Stroke {
   });
 }
 
+class NotebookPage {
+  List<Stroke> strokes;
+  List<Stroke> redoStrokes;
+  List<TextNote> textNotes;
+  MannequinType mannequinType;
+  PaperType paperType;
+
+  NotebookPage({
+    List<Stroke>? strokes,
+    List<Stroke>? redoStrokes,
+    List<TextNote>? textNotes,
+    this.mannequinType = MannequinType.none,
+    this.paperType = PaperType.dots,
+  })  : this.strokes = strokes ?? [],
+        this.redoStrokes = redoStrokes ?? [],
+        this.textNotes = textNotes ?? [];
+}
+
 class ScribbleScreen extends StatefulWidget {
   final String customerId;
 
@@ -61,29 +82,57 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
   bool get _isTextMode => _notebookMode == NotebookMode.text;
   bool get _isDrawMode => _notebookMode == NotebookMode.draw;
 
-  double _canvasHeight = 800; // Dynamically updated
+  final double _canvasWidth = 400.0;
+  final double _canvasHeight = 700.0;
+  final TransformationController _transformationController = TransformationController();
   bool _isInitialized = false;
   final GlobalKey _boundaryKey = GlobalKey();
 
   Color _selectedColor = Colors.black;
   double _selectedStroke = 3.0;
-  MannequinType _mannequinType = MannequinType.none;
   bool _isHighlighter = false;
-  PaperType _paperType = PaperType.dots;
   bool _showPaperSelector = false;
   bool _showMannequinSelector = false;
 
-  List<Stroke> _strokes = [];
-  List<Stroke> _redoStrokes = [];
   Stroke? _currentStroke;
-  List<TextNote> _textNotes = [];
-
   String? _customerName;
+  Measurement? _measurement;
+
+  final List<NotebookPage> _pages = [NotebookPage()];
+  int _currentPageIndex = 0;
+
+  List<Stroke> get _strokes => _pages[_currentPageIndex].strokes;
+  List<Stroke> get _redoStrokes => _pages[_currentPageIndex].redoStrokes;
+  List<TextNote> get _textNotes => _pages[_currentPageIndex].textNotes;
+
+  MannequinType get _mannequinType => _pages[_currentPageIndex].mannequinType;
+  set _mannequinType(MannequinType value) => _pages[_currentPageIndex].mannequinType = value;
+
+  PaperType get _paperType => _pages[_currentPageIndex].paperType;
+  set _paperType(PaperType value) => _pages[_currentPageIndex].paperType = value;
 
   @override
   void initState() {
     super.initState();
     _loadCustomerName();
+    _loadMeasurements();
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _loadMeasurements() async {
+    try {
+      final m = await _service.getMeasurement(widget.customerId);
+      if (mounted) {
+        setState(() {
+          _measurement = m;
+        });
+      }
+    } catch (_) {}
   }
 
   void _loadCustomerName() {
@@ -125,12 +174,40 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
         strokeWidth: _currentStroke!.strokeWidth,
         isHighlighter: _currentStroke!.isHighlighter,
       );
-      
-      // Auto-expand canvas if drawing reaches near bottom bounds
-      if (details.localPosition.dy > _canvasHeight - 150) {
-        _canvasHeight += 600;
+    });
+  }
+
+  void _addPage() {
+    setState(() {
+      _pages.add(NotebookPage());
+      _currentPageIndex = _pages.length - 1;
+    });
+  }
+
+  void _deletePage() {
+    if (_pages.length <= 1) return;
+    setState(() {
+      _pages.removeAt(_currentPageIndex);
+      if (_currentPageIndex >= _pages.length) {
+        _currentPageIndex = _pages.length - 1;
       }
     });
+  }
+
+  void _prevPage() {
+    if (_currentPageIndex > 0) {
+      setState(() {
+        _currentPageIndex--;
+      });
+    }
+  }
+
+  void _nextPage() {
+    if (_currentPageIndex < _pages.length - 1) {
+      setState(() {
+        _currentPageIndex++;
+      });
+    }
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -259,24 +336,52 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
     );
   }
 
+  bool _isNotebookEmpty() {
+    return _pages.every((p) => p.strokes.isEmpty && p.textNotes.isEmpty);
+  }
+
+  Future<List<Uint8List>> _captureAllPages() async {
+    final List<Uint8List> images = [];
+    final originalIndex = _currentPageIndex;
+    
+    for (int i = 0; i < _pages.length; i++) {
+      setState(() {
+        _currentPageIndex = i;
+      });
+      // Wait for layout/repaint
+      await Future.delayed(const Duration(milliseconds: 120));
+      
+      final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) continue;
+      
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) continue;
+      
+      images.add(byteData.buffer.asUint8List());
+    }
+    
+    setState(() {
+      _currentPageIndex = originalIndex;
+    });
+    
+    return images;
+  }
+
   Future<void> _saveScribble() async {
-    if (_strokes.isEmpty) {
+    if (_isNotebookEmpty()) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Canvas is empty!')));
       return;
     }
 
     setState(() => _isSaving = true);
     try {
-      final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) throw Exception('Unable to capture drawing boundary');
+      final images = await _captureAllPages();
+      if (images.isEmpty) throw Exception('No content to save');
 
-      final image = await boundary.toImage(pixelRatio: 2.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) throw Exception('Failed to encode image data');
-
-      final exportBytes = byteData.buffer.asUint8List();
-
-      await _service.uploadScribble(widget.customerId, exportBytes);
+      for (final imgBytes in images) {
+        await _service.uploadScribble(widget.customerId, imgBytes);
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -293,31 +398,386 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
     }
   }
 
-  Future<void> _downloadAsPdf() async {
+  void _openMeasurementForm() async {
     setState(() => _isSaving = true);
     try {
-      final boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-      if (boundary == null) throw Exception('Unable to capture drawing boundary');
+      final m = await _service.getMeasurement(widget.customerId);
+      setState(() {
+        _measurement = m;
+        _isSaving = false;
+      });
+      if (mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MeasurementFormScreen(
+              customerId: widget.customerId,
+              existingMeasurement: _measurement,
+            ),
+          ),
+        );
+        _loadMeasurements();
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading measurements: $e')),
+        );
+      }
+    }
+  }
 
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) throw Exception('Failed to encode image data');
-
-      final exportBytes = byteData.buffer.asUint8List();
-
+  Future<void> _exportPdfSheet({required bool includeSketch, required bool includeMeasurements}) async {
+    setState(() => _isSaving = true);
+    try {
       final pdf = pw.Document();
-      final pdfImage = pw.MemoryImage(exportBytes);
 
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return pw.Center(
-              child: pw.Image(pdfImage, fit: pw.BoxFit.contain),
-            );
-          },
-        ),
-      );
+      // Local helper to build section tables
+      pw.Widget buildPdfSectionTable(String title, List<MapEntry<String, String>> items) {
+        if (items.isEmpty) return pw.SizedBox.shrink();
+
+        return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Container(
+              width: double.infinity,
+              decoration: pw.BoxDecoration(
+                border: pw.Border(
+                  left: pw.BorderSide(
+                    color: PdfColor.fromInt(0xFF0A2540),
+                    width: 3,
+                  ),
+                ),
+              ),
+              padding: const pw.EdgeInsets.only(left: 8, top: 4, bottom: 4),
+              child: pw.Text(
+                title,
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColor.fromInt(0xFF0A2540),
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColor.fromInt(0xFFE3E8EE), width: 1),
+              columnWidths: const {
+                0: pw.FlexColumnWidth(3),
+                1: pw.FlexColumnWidth(2),
+              },
+              children: items.map((item) {
+                return pw.TableRow(
+                  children: [
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: pw.Text(
+                        item.key,
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColor.fromInt(0xFF1A1F36),
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      child: pw.Text(
+                        item.value,
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColor.fromInt(0xFF697386),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ],
+        );
+      }
+
+      // Page 1: Design sketch (capturing all pages)
+      if (includeSketch) {
+        final images = await _captureAllPages();
+        for (final imgBytes in images) {
+          final pdfImage = pw.MemoryImage(imgBytes);
+          pdf.addPage(
+            pw.Page(
+              pageFormat: PdfPageFormat.a4,
+              margin: const pw.EdgeInsets.all(20),
+              build: (pw.Context context) {
+                return pw.Center(
+                  child: pw.Image(pdfImage, fit: pw.BoxFit.contain),
+                );
+              },
+            ),
+          );
+        }
+      }
+
+      // Page 2: Measurements table
+      if (includeMeasurements) {
+        // Fetch latest measurement just in case
+        final measurement = await _service.getMeasurement(widget.customerId);
+        if (mounted) {
+          setState(() {
+            _measurement = measurement;
+          });
+        }
+        
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: const pw.EdgeInsets.all(32),
+            build: (pw.Context context) {
+              String val(String? value) => (value != null && value.isNotEmpty) ? '$value in' : '-';
+
+              final upperItems = <MapEntry<String, String>>[
+                MapEntry('Length', val(measurement?.upperLength)),
+                MapEntry('Chest', val(measurement?.chest)),
+                MapEntry('Upper chest', val(measurement?.upperChest)),
+                MapEntry('Point', val(measurement?.point)),
+                MapEntry('Waist', val(measurement?.upperWaist ?? measurement?.waist)),
+                MapEntry('Sleeve', val(measurement?.sleeve)),
+                MapEntry('Shoulder', val(measurement?.shoulder)),
+                MapEntry('Slit', val(measurement?.slit)),
+                MapEntry('Hip', val(measurement?.upperHip)),
+                MapEntry('Lower hip', val(measurement?.lowerHip)),
+                MapEntry('Front neck', val(measurement?.frontNeck)),
+                MapEntry('Back neck', val(measurement?.backNeck)),
+                MapEntry('Back board', val(measurement?.backBoard)),
+                MapEntry('Arm', val(measurement?.arm)),
+                MapEntry('Side', val(measurement?.side)),
+              ];
+
+              final bottomItems = <MapEntry<String, String>>[
+                MapEntry('Length', val(measurement?.lowerLength ?? measurement?.length)),
+                MapEntry('Waist', val(measurement?.lowerWaist)),
+                MapEntry('Hip', val(measurement?.bottomHip)),
+                MapEntry('Thigh', val(measurement?.thigh)),
+                MapEntry('Knee', val(measurement?.knee)),
+                MapEntry('Crotch', val(measurement?.crotch)),
+                MapEntry('Bottom', val(measurement?.bottom)),
+              ];
+
+              final fullItems = <MapEntry<String, String>>[
+                MapEntry('Length', val(measurement?.fullLength)),
+                MapEntry('Yoke', val(measurement?.yoke)),
+              ];
+
+              if (measurement != null && measurement.customValues.isNotEmpty) {
+                measurement.customValues.forEach((key, value) {
+                  final parts = key.split('_');
+                  final tab = parts.isNotEmpty ? parts[0] : '';
+                  final label = parts.length >= 2 ? parts.sublist(1).join('_') : key;
+                  final valStr = value != null && value.toString().isNotEmpty ? '$value in' : '-';
+
+                  if (tab == 'upper') {
+                    if (label != 'Length' &&
+                        label != 'Chest' &&
+                        label != 'Upper chest' &&
+                        label != 'Point' &&
+                        label != 'Waist' &&
+                        label != 'Sleeve' &&
+                        label != 'Shoulder' &&
+                        label != 'Slit' &&
+                        label != 'Hip' &&
+                        label != 'Lower hip' &&
+                        label != 'Front neck' &&
+                        label != 'Back neck' &&
+                        label != 'Back board' &&
+                        label != 'Arm' &&
+                        label != 'Side') {
+                      upperItems.add(MapEntry(label, valStr));
+                    }
+                  } else if (tab == 'bottom') {
+                    if (label != 'Length' &&
+                        label != 'Waist' &&
+                        label != 'Hip' &&
+                        label != 'Thigh' &&
+                        label != 'Tigh' &&
+                        label != 'Knee' &&
+                        label != 'Crotch' &&
+                        label != 'Bottom' &&
+                        label != 'Buttom') {
+                      bottomItems.add(MapEntry(label, valStr));
+                    }
+                  } else if (tab == 'full') {
+                    if (label != 'Length' &&
+                        label != 'Yoke' &&
+                        label != 'Full Length') {
+                      fullItems.add(MapEntry(label, valStr));
+                    }
+                  } else {
+                    fullItems.add(MapEntry(label, valStr));
+                  }
+                });
+              }
+
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  // Title Header
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'SOUL COUTURE',
+                            style: pw.TextStyle(
+                              fontSize: 24,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColor.fromInt(0xFF0A2540),
+                            ),
+                          ),
+                          pw.SizedBox(height: 4),
+                          pw.Text(
+                            'DESIGN STUDIO SPEC SHEET',
+                            style: pw.TextStyle(
+                              fontSize: 10,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColor.fromInt(0xFF697386),
+                            ),
+                          ),
+                        ],
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: PdfColor.fromInt(0xFF0A2540), width: 1.5),
+                          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                        ),
+                        child: pw.Text(
+                          'MEASUREMENTS SPEC',
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColor.fromInt(0xFF0A2540),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 16),
+                  pw.Divider(color: PdfColor.fromInt(0xFFE3E8EE), thickness: 1.5),
+                  pw.SizedBox(height: 16),
+
+                  // Client Details Box
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(16),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromInt(0xFFF8F9FA),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+                      border: pw.Border.all(color: PdfColor.fromInt(0xFFE3E8EE)),
+                    ),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'CLIENT DETAILS',
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColor.fromInt(0xFF697386),
+                              ),
+                            ),
+                            pw.SizedBox(height: 6),
+                            pw.Text(
+                              _customerName?.toUpperCase() ?? 'CLIENT',
+                              style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColor.fromInt(0xFF1A1F36),
+                              ),
+                            ),
+                          ],
+                        ),
+                        pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.end,
+                          children: [
+                            pw.Text(
+                              'DATE RECORDED',
+                              style: pw.TextStyle(
+                                fontSize: 8,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColor.fromInt(0xFF697386),
+                              ),
+                            ),
+                            pw.SizedBox(height: 4),
+                            pw.Text(
+                              _formatToday(),
+                              style: pw.TextStyle(
+                                fontSize: 12,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColor.fromInt(0xFF1A1F36),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(height: 24),
+
+                  // Measurements Section
+                  pw.Text(
+                    'BODY MEASUREMENTS',
+                    style: pw.TextStyle(
+                      fontSize: 13,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColor.fromInt(0xFF0A2540),
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Expanded(
+                        child: buildPdfSectionTable('UPPER BODY', upperItems),
+                      ),
+                      pw.SizedBox(width: 24),
+                      pw.Expanded(
+                        child: buildPdfSectionTable('BOTTOM BODY', bottomItems),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 20),
+
+                  buildPdfSectionTable('FULL BODY & OTHER', fullItems),
+
+                  pw.Spacer(),
+
+                  // Footer Info
+                  pw.Divider(color: PdfColor.fromInt(0xFFE3E8EE), thickness: 1),
+                  pw.SizedBox(height: 8),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text(
+                        'Generated via Soul Couture Design Studio Workspace',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                      ),
+                      pw.Text(
+                        'Thank you for your business!',
+                        style: pw.TextStyle(fontSize: 8, color: PdfColor.fromInt(0xFF10B981), fontWeight: pw.FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      }
 
       final pdfBytes = await pdf.save();
       final filename = 'Digital_Note_${_customerName ?? widget.customerId}.pdf';
@@ -629,8 +1089,9 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      final screenHeight = MediaQuery.of(context).size.height;
-      _canvasHeight = screenHeight > 800 ? screenHeight : 800;
+      final screenWidth = MediaQuery.of(context).size.width;
+      final initialScale = screenWidth / _canvasWidth;
+      _transformationController.value = Matrix4.identity()..scaleByDouble(initialScale, initialScale, 1.0, 1.0);
       _isInitialized = true;
     }
 
@@ -639,9 +1100,54 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
         title: const Text('Digital Note'),
         actions: [
           IconButton(
-            onPressed: _downloadAsPdf,
+            onPressed: _openMeasurementForm,
+            icon: const Icon(Icons.straighten, color: AppTheme.primary),
+            tooltip: 'Take Measurements',
+          ),
+          PopupMenuButton<int>(
             icon: const Icon(Icons.download_rounded, color: AppTheme.primary),
-            tooltip: 'Download PDF',
+            tooltip: 'Export / Print PDF',
+            onSelected: (value) {
+              if (value == 1) {
+                _exportPdfSheet(includeSketch: true, includeMeasurements: false);
+              } else if (value == 2) {
+                _exportPdfSheet(includeSketch: false, includeMeasurements: true);
+              } else if (value == 3) {
+                _exportPdfSheet(includeSketch: true, includeMeasurements: true);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 1,
+                child: Row(
+                  children: [
+                    Icon(Icons.draw, size: 18, color: AppTheme.primary),
+                    SizedBox(width: 8),
+                    Text('Export Sketch only'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 2,
+                child: Row(
+                  children: [
+                    Icon(Icons.straighten, size: 18, color: AppTheme.primary),
+                    SizedBox(width: 8),
+                    Text('Export Measurements only'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 3,
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, size: 18, color: AppTheme.primary),
+                    SizedBox(width: 8),
+                    Text('Export Combined PDF'),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 8),
           _isSaving
@@ -663,23 +1169,73 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
+          // Pagination control bar
+          Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: _currentPageIndex > 0 ? _prevPage : null,
+                      tooltip: 'Previous Page',
+                    ),
+                    Text(
+                      'Page ${_currentPageIndex + 1} of ${_pages.length}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: _currentPageIndex < _pages.length - 1 ? _nextPage : null,
+                      tooltip: 'Next Page',
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.add_circle_outline, size: 18, color: AppTheme.accent),
+                      label: const Text('Add Page', style: TextStyle(color: AppTheme.accent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      onPressed: _addPage,
+                    ),
+                    if (_pages.length > 1) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+                        onPressed: _deletePage,
+                        tooltip: 'Delete Current Page',
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Stack(
+              children: [
           // Canvas Layer (Pannable area)
           Positioned.fill(
             child: InteractiveViewer(
+              transformationController: _transformationController,
               panEnabled: _isScrollMode,
-              scaleEnabled: _isScrollMode,
-              minScale: 1.0,
+              scaleEnabled: true,
+              minScale: 0.1,
               maxScale: 4.0,
-              child: SingleChildScrollView(
-                physics: _isScrollMode
-                    ? const AlwaysScrollableScrollPhysics()
-                    : const NeverScrollableScrollPhysics(),
+              child: Center(
                 child: RepaintBoundary(
                   key: _boundaryKey,
                   child: Container(
                     padding: const EdgeInsets.all(24),
+                    width: _canvasWidth,
                     height: _canvasHeight,
                     color: Colors.white,
                     child: Column(
@@ -1077,6 +1633,9 @@ class _ScribbleScreenState extends State<ScribbleScreen> {
           ),
         ],
       ),
+    ),
+  ],
+),
     );
   }
 }
